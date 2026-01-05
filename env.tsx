@@ -1,1 +1,1 @@
-API_KEY=AIzaSyAaZiYNcZtggcY6dwUaa3PfyijBomptwiI
+export const API_KEY = import.meta.env.VITE_API_KEY || "";
