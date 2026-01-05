@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CA Homeschool Alignment Tool</title>
+    
+    <!-- App-like Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CA Align">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/initials/svg?seed=CA&backgroundColor=81adb3">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Base print logic */
+        .print-only { display: none !important; }
+        
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            
+            @page { 
+                margin: 0.5in; 
+                size: portrait;
+            }
+            
+            body { 
+                background-color: white !important; 
+                color: black !important; 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact;
+                margin: 0 !important;
+                padding: 0 !important;
+                font-family: serif; 
+            }
+            
+            #root, main {
+                max-width: none !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .official-header {
+                text-align: center;
+                border-bottom: 2pt solid #81adb3;
+                padding-bottom: 15pt;
+                margin-bottom: 20pt;
+                display: flex !important;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            /* Ensure transcript table looks professional */
+            .transcript-container {
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+            }
+
+            .record-row {
+                page-break-inside: avoid;
+                border-top: 1px solid #e2e8f0 !important;
+                padding: 15pt 0 !important;
+                display: grid !important;
+                grid-template-cols: 100pt 1fr 2fr !important;
+                gap: 20pt !important;
+            }
+
+            .match-logic-box {
+                background-color: #f8fafc !important;
+                border: 1px solid #e2e8f0 !important;
+                padding: 10pt !important;
+                margin-top: 10pt !important;
+                font-style: italic !important;
+            }
+            
+            h3 { font-size: 24pt !important; margin-bottom: 5pt !important; }
+            .standard-code { background-color: #334155 !important; color: white !important; padding: 2pt 5pt !important; border-radius: 3pt !important; }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .bg-blob {
+            position: fixed;
+            width: 50vw;
+            height: 50vw;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.15;
+            z-index: -1;
+            pointer-events: none;
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.4.1",
+    "vite": "https://aistudiocdn.com/vite@^7.2.2",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "firebase/": "https://esm.sh/firebase@^12.7.0/",
+    "jspdf": "https://esm.sh/jspdf@^3.0.4"
+  }
+}
+</script>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen selection:bg-[#81adb3]/20">
+    <!-- Decorative Blobs -->
+    <div class="bg-blob bg-[#81adb3] top-1/2 left-1/4 animate-pulse"></div>
+    <div class="bg-blob bg-[#e7b64f] -top-20 -left-20 animate-pulse"></div>
+    <div class="bg-blob bg-[#f4989c] -bottom-20 -right-20 animate-pulse" style="animation-delay: 1s"></div>
+    
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>

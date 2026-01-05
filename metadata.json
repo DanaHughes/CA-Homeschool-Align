@@ -1,0 +1,7 @@
+{
+  "name": "CA Homeschool Align",
+  "description": "AI-powered tool for California homeschoolers to match activities to current CCSS, NGSS, and HSS standards, track student progress, and generate reports.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
