@@ -143,32 +143,73 @@ export default function App() {
     });
   }, []);
 
-  const fetchData = async () => {
-    if (user) {
-      setIsDataLoading(true);
-      try {
-        const fetchedStudents = await dbService.getStudents(user.id);
-        setStudents(fetchedStudents);
-        
-        if (!selectedStudentId && fetchedStudents.length > 0) {
-          handleStudentSelect(fetchedStudents[0].id, fetchedStudents);
-        }
 
-        // ISSUE #1 FIX: Parallel fetching with Promise.all
+  const fetchData = async (currentUser?: User | null) => {
+    // Use passed user or fall back to state user to avoid stale closure issues
+    const userToUse = currentUser ?? user;
+    if (!userToUse?.id) {
+      console.warn('fetchData called without valid user');
+      return;
+    }
+
+    setIsDataLoading(true);
+    try {
+      const fetchedStudents = await dbService.getStudents(userToUse.id);
+      setStudents(fetchedStudents);
+      
+      if (!selectedStudentId && fetchedStudents.length > 0) {
+        handleStudentSelect(fetchedStudents[0].id, fetchedStudents);
+      }
+
+      // ISSUE #1 FIX: Parallel fetching with Promise.all
+      // Only fetch records if we have students
+      if (fetchedStudents.length > 0) {
         const recordArrays = await Promise.all(
           fetchedStudents.map(student => dbService.getRecords(student.id))
         );
         const allRecords = recordArrays.flat();
+        console.log('📚 Loaded records from Firestore:', allRecords.length);
         setRecords(allRecords);
-      } finally {
-        setIsDataLoading(false);
+      } else {
+        // If no students, clear records to avoid stale data
+        setRecords([]);
       }
+    } catch (error: any) {
+      console.error('❌ Error fetching data:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        code: error?.code,
+        name: error?.name,
+        stack: error?.stack
+      });
+      
+      // Log specific permission errors
+      if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+        console.error('🔒 PERMISSION ERROR DETECTED');
+        console.error('This usually means:');
+        console.error('1. Firestore rules are not deployed');
+        console.error('2. User is not authenticated');
+        console.error('3. Data structure mismatch (missing userId field)');
+        console.error('Current user ID:', userToUse.id);
+      }
+      
+      // Don't clear existing data on error, just log it
+    } finally {
+      setIsDataLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!user?.id) return;
-    fetchData();
+    if (!user?.id) {
+      // Clear data when user logs out
+      setStudents([]);
+      setRecords([]);
+      setViewingStudentId(null);
+      setActiveTab('search');
+      return;
+    }
+    // Pass user explicitly to avoid stale closure
+    fetchData(user);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
@@ -223,7 +264,7 @@ export default function App() {
             name: studentModalName.trim(),
             gradeLevel: studentModalGrade
         });
-        await fetchData();
+        await fetchData(user);
         handleStudentSelect(id);
         
         if (pendingAutoSave) {
@@ -261,7 +302,7 @@ export default function App() {
           name: studentModalName.trim(), 
           gradeLevel: studentModalGrade 
         });
-        await fetchData();
+        await fetchData(user);
         
         // Reset modal state
         setStudentModalName('');
@@ -279,7 +320,7 @@ export default function App() {
         await dbService.deleteStudent(studentId);
         if (viewingStudentId === studentId) setViewingStudentId(null);
         if (selectedStudentId === studentId) setSelectedStudentId('');
-        await fetchData();
+        await fetchData(user);
     } finally {
         setIsSyncing(false);
     }
@@ -564,9 +605,22 @@ export default function App() {
       };
 
       const id = await dbService.addRecord(recordData);
-      setRecords(prev => [{ id, ...recordData } as LearningRecord, ...prev]);
+      const newRecord = { id, ...recordData } as LearningRecord;
+      setRecords(prev => [newRecord, ...prev]);
+      
+      // Automatically navigate to Vault tab and show the student's records
+      setActiveTab('students');
+      setViewingStudentId(studentId);
+      
+      console.log('✅ Record saved successfully:', { 
+        id, 
+        studentId, 
+        standardCode: standard.code,
+        totalRecords: records.length + 1
+      });
     } catch (e: any) {
-      console.error("Save Error:", e);
+      console.error("❌ Save Error:", e);
+      alert("Failed to save record. Please try again.");
     } finally {
       setIsSavingRecord(false);
     }
@@ -1516,21 +1570,30 @@ export default function App() {
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[500] md:hidden w-[90%] max-w-sm no-print">
         <div className="bg-slate-900/95 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 p-2 flex items-center justify-between shadow-2xl ring-1 ring-white/10">
             <button 
-                onClick={() => { setActiveTab('search'); setViewingStudentId(null); }}
+                onClick={() => { 
+                  setActiveTab('search'); 
+                  setViewingStudentId(null);
+                }}
                 className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all duration-300 ${activeTab === 'search' ? 'text-[#e7b64f] scale-110' : 'text-slate-500 opacity-60'}`}
             >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 <span className="text-[8px] font-black uppercase tracking-widest">Match</span>
             </button>
             <button 
-                onClick={() => { setActiveTab('students'); setViewingStudentId(null); }}
+                onClick={() => { 
+                  setActiveTab('students'); 
+                  setViewingStudentId(null);
+                }}
                 className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all duration-300 ${activeTab === 'students' ? 'text-[#81adb3] scale-110' : 'text-slate-500 opacity-60'}`}
             >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                 <span className="text-[8px] font-black uppercase tracking-widest">Vault</span>
             </button>
             <button 
-                onClick={() => { setActiveTab('features'); setViewingStudentId(null); }}
+                onClick={() => { 
+                  setActiveTab('features'); 
+                  setViewingStudentId(null);
+                }}
                 className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all duration-300 ${activeTab === 'features' ? 'text-[#f4989c] scale-110' : 'text-slate-500 opacity-60'}`}
             >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z"/></svg>
@@ -1554,11 +1617,25 @@ export default function App() {
                 </div>
             </div>
             <nav className="hidden md:flex items-center gap-8">
-               <button onClick={() => { setActiveTab('search'); setViewingStudentId(null); }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'search' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Match</button>
-               <button onClick={() => { setActiveTab('students'); setViewingStudentId(null); }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'students' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Vault</button>
-               <button onClick={() => { setActiveTab('features'); setViewingStudentId(null); }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'features' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Start Here</button>
+               <button onClick={() => { 
+                 setActiveTab('search'); 
+                 setViewingStudentId(null);
+               }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'search' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Match</button>
+               <button onClick={() => { 
+                 setActiveTab('students'); 
+                 setViewingStudentId(null);
+               }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'students' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Vault</button>
+               <button onClick={() => { 
+                 setActiveTab('features'); 
+                 setViewingStudentId(null);
+               }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'features' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Start Here</button>
             </nav>
-            <button onClick={() => authService.logout()} className="text-[8px] font-black text-slate-300 uppercase tracking-widest hover:text-red-400 transition-colors">Logout</button>
+            <button onClick={async () => {
+              await authService.logout();
+              // Navigate to home page after logout
+              setActiveTab('search');
+              setViewingStudentId(null);
+            }} className="text-[8px] font-black text-slate-300 uppercase tracking-widest hover:text-red-400 transition-colors">Logout</button>
         </div>
       </header>
 
@@ -1756,7 +1833,12 @@ export default function App() {
                <div className="animate-fade-in space-y-12">
                    <div className="flex flex-col md:flex-row justify-between items-end border-b border-slate-200 pb-8 no-print gap-4">
                        <div>
-                           {viewingStudentId && <button onClick={() => { setViewingStudentId(null); setSchoolYearFilter('All'); setStartDateFilter(''); setEndDateFilter(''); }} className="text-[10px] font-black text-[#81adb3] uppercase tracking-widest mb-2 no-print">← Back to Student Vault</button>}
+                           {viewingStudentId && <button onClick={() => { 
+                             setViewingStudentId(null); 
+                             setSchoolYearFilter('All'); 
+                             setStartDateFilter(''); 
+                             setEndDateFilter('');
+                           }} className="text-[10px] font-black text-[#81adb3] uppercase tracking-widest mb-2 no-print">← Back to Student Vault</button>}
                            <h2 className="text-4xl font-black text-slate-800 uppercase tracking-tighter leading-none mb-1">{viewingStudentId ? activeViewingStudent?.name : 'Student Vault'}</h2>
                            {schoolYearLabel && (
                              <p className="text-[#e7b64f] text-xs font-black uppercase tracking-widest mb-1">
@@ -1791,7 +1873,7 @@ export default function App() {
                                 Export Vault
                             </button>
                          )}
-                         <button onClick={fetchData} className="text-[9px] font-black text-[#81adb3] uppercase tracking-widest border border-[#81adb3]/20 px-4 py-2 rounded-xl hover:bg-[#81adb3]/5 transition-colors no-print">
+                         <button onClick={() => fetchData(user)} className="text-[9px] font-black text-[#81adb3] uppercase tracking-widest border border-[#81adb3]/20 px-4 py-2 rounded-xl hover:bg-[#81adb3]/5 transition-colors no-print">
                             {isSyncing || isDataLoading ? "Syncing..." : "Refresh Vault"}
                          </button>
                        </div>
@@ -1805,7 +1887,10 @@ export default function App() {
                                <>
                                    {students.map(student => (
                                        <div key={student.id} className="group bg-white rounded-[3rem] p-10 shadow-sm border border-slate-100 hover:shadow-2xl transition-all relative text-center flex flex-col items-center">
-                                           <div onClick={() => setViewingStudentId(student.id)} className="cursor-pointer w-full flex flex-col items-center">
+                                           <div onClick={() => {
+                                             setViewingStudentId(student.id);
+                                             setActiveTab('students');
+                                           }} className="cursor-pointer w-full flex flex-col items-center">
                                                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-6 group-hover:bg-[#81adb3]/10 group-hover:text-[#81adb3] transition-colors">
                                                   <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                                                </div>
