@@ -117,7 +117,10 @@ export const searchStandards = async (
    if (!text || text.trim() === "") return [];
   
    const results = JSON.parse(text);
-   await dbService.incrementUsage();
+   // Increment usage (non-blocking - don't fail search if this fails)
+   dbService.incrementUsage().catch(err => {
+     console.warn('Failed to increment usage stats:', err);
+   });
    return Array.isArray(results) ? results : [];
  } catch (error) {
    console.error("Search Error:", error);

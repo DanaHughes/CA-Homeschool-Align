@@ -57,9 +57,13 @@ export const AuthGate: React.FC<AuthGateProps> = ({ onLogin, onShowTerms }) => {
       if (err.message?.includes('auth/invalid-credential') || err.message?.includes('auth/user-not-found')) {
         setError("Account not found or password incorrect.");
       } else if (err.message?.includes('auth/email-already-in-use')) {
-        setError("This email address is already registered.");
+        setError("This email is already registered. Try logging in instead, or use a different email.");
+      } else if (err.message?.includes('User record not found')) {
+        setError("Account found but missing data. Please try logging in - we'll fix this automatically.");
+      } else if (err.code === 'permission-denied' || err.message?.includes('permission')) {
+        setError("Permission error. Please make sure Firestore rules are deployed in Firebase Console.");
       } else {
-        setError("Unable to connect to the classroom vault. Check your connection.");
+        setError(err.message || "Unable to connect. Please check your connection and try again.");
       }
       setIsLoading(false);
     }
