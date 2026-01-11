@@ -143,43 +143,6 @@ export default function App() {
     });
   }, []);
 
-  // URL-based routing for vault - sync viewingStudentId with URL path
-  useEffect(() => {
-    const handleRouteChange = () => {
-      const path = window.location.pathname;
-      
-      // Check for pattern: /vault/studentId
-      const vaultMatch = path.match(/^\/vault\/([^/]+)$/);
-      if (vaultMatch) {
-        const studentIdFromUrl = vaultMatch[1];
-        // Validate that this student exists and belongs to the user
-        const studentExists = students.some(s => s.id === studentIdFromUrl);
-        if (studentExists && studentIdFromUrl !== viewingStudentId) {
-          setViewingStudentId(studentIdFromUrl);
-          setActiveTab('students');
-        } else if (!studentExists && students.length > 0) {
-          // Student doesn't exist, redirect to vault list
-          window.history.pushState({}, '', '/vault');
-          setViewingStudentId(null);
-        }
-      } else if (path === '/vault') {
-        // If just /vault, show vault list (no specific student)
-        if (activeTab === 'students' && viewingStudentId) {
-          setViewingStudentId(null);
-        } else if (activeTab !== 'students') {
-          setActiveTab('students');
-          setViewingStudentId(null);
-        }
-      }
-    };
-
-    // Check URL on mount and when students/state changes
-    handleRouteChange();
-
-    // Listen for popstate (back/forward buttons)
-    window.addEventListener('popstate', handleRouteChange);
-    return () => window.removeEventListener('popstate', handleRouteChange);
-  }, [viewingStudentId, activeTab, students]);
 
   const fetchData = async (currentUser?: User | null) => {
     // Use passed user or fall back to state user to avoid stale closure issues
@@ -193,24 +156,6 @@ export default function App() {
     try {
       const fetchedStudents = await dbService.getStudents(userToUse.id);
       setStudents(fetchedStudents);
-      
-      // Check if URL has a student ID and validate it
-      const path = window.location.pathname;
-      const vaultMatch = path.match(/^\/vault\/([^/]+)$/);
-      if (vaultMatch) {
-        const studentIdFromUrl = vaultMatch[1];
-        const studentExists = fetchedStudents.some(s => s.id === studentIdFromUrl);
-        if (studentExists) {
-          setViewingStudentId(studentIdFromUrl);
-          setActiveTab('students');
-        } else if (fetchedStudents.length > 0) {
-          // Invalid student ID in URL, redirect to vault list
-          window.history.pushState({}, '', '/vault');
-        }
-      } else if (path === '/vault') {
-        setActiveTab('students');
-        setViewingStudentId(null);
-      }
       
       if (!selectedStudentId && fetchedStudents.length > 0) {
         handleStudentSelect(fetchedStudents[0].id, fetchedStudents);
@@ -261,10 +206,6 @@ export default function App() {
       setRecords([]);
       setViewingStudentId(null);
       setActiveTab('search');
-      // Navigate to home page when user logs out
-      if (window.location.pathname !== '/') {
-        window.history.pushState({}, '', '/');
-      }
       return;
     }
     // Pass user explicitly to avoid stale closure
@@ -670,8 +611,6 @@ export default function App() {
       // Automatically navigate to Vault tab and show the student's records
       setActiveTab('students');
       setViewingStudentId(studentId);
-      // Update URL to reflect vault state
-      window.history.pushState({}, '', `/vault/${studentId}`);
       
       console.log('✅ Record saved successfully:', { 
         id, 
@@ -1634,7 +1573,6 @@ export default function App() {
                 onClick={() => { 
                   setActiveTab('search'); 
                   setViewingStudentId(null);
-                  window.history.pushState({}, '', '/');
                 }}
                 className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all duration-300 ${activeTab === 'search' ? 'text-[#e7b64f] scale-110' : 'text-slate-500 opacity-60'}`}
             >
@@ -1645,7 +1583,6 @@ export default function App() {
                 onClick={() => { 
                   setActiveTab('students'); 
                   setViewingStudentId(null);
-                  window.history.pushState({}, '', '/vault');
                 }}
                 className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all duration-300 ${activeTab === 'students' ? 'text-[#81adb3] scale-110' : 'text-slate-500 opacity-60'}`}
             >
@@ -1656,7 +1593,6 @@ export default function App() {
                 onClick={() => { 
                   setActiveTab('features'); 
                   setViewingStudentId(null);
-                  window.history.pushState({}, '', '/');
                 }}
                 className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all duration-300 ${activeTab === 'features' ? 'text-[#f4989c] scale-110' : 'text-slate-500 opacity-60'}`}
             >
@@ -1684,17 +1620,14 @@ export default function App() {
                <button onClick={() => { 
                  setActiveTab('search'); 
                  setViewingStudentId(null);
-                 window.history.pushState({}, '', '/');
                }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'search' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Match</button>
                <button onClick={() => { 
                  setActiveTab('students'); 
                  setViewingStudentId(null);
-                 window.history.pushState({}, '', '/vault');
                }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'students' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Vault</button>
                <button onClick={() => { 
                  setActiveTab('features'); 
                  setViewingStudentId(null);
-                 window.history.pushState({}, '', '/');
                }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'features' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Start Here</button>
             </nav>
             <button onClick={async () => {
@@ -1702,7 +1635,6 @@ export default function App() {
               // Navigate to home page after logout
               setActiveTab('search');
               setViewingStudentId(null);
-              window.history.pushState({}, '', '/');
             }} className="text-[8px] font-black text-slate-300 uppercase tracking-widest hover:text-red-400 transition-colors">Logout</button>
         </div>
       </header>
@@ -1906,7 +1838,6 @@ export default function App() {
                              setSchoolYearFilter('All'); 
                              setStartDateFilter(''); 
                              setEndDateFilter('');
-                             window.history.pushState({}, '', '/vault');
                            }} className="text-[10px] font-black text-[#81adb3] uppercase tracking-widest mb-2 no-print">← Back to Student Vault</button>}
                            <h2 className="text-4xl font-black text-slate-800 uppercase tracking-tighter leading-none mb-1">{viewingStudentId ? activeViewingStudent?.name : 'Student Vault'}</h2>
                            {schoolYearLabel && (
@@ -1959,7 +1890,6 @@ export default function App() {
                                            <div onClick={() => {
                                              setViewingStudentId(student.id);
                                              setActiveTab('students');
-                                             window.history.pushState({}, '', `/vault/${student.id}`);
                                            }} className="cursor-pointer w-full flex flex-col items-center">
                                                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-6 group-hover:bg-[#81adb3]/10 group-hover:text-[#81adb3] transition-colors">
                                                   <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
