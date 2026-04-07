@@ -1,7 +1,14 @@
 
 import React, { useState } from 'react';
 
+interface AccessGateUser {
+  id: string;
+  email: string;
+  name?: string;
+}
+
 interface AccessGateProps {
+  user?: AccessGateUser | null;
   onUnlock: (name: string, code: string) => void;
   onCancel?: () => void;
 }
@@ -14,24 +21,72 @@ const LogoIcon = ({ className = "w-16 h-16" }) => (
   </div>
 );
 
-export const AccessGate: React.FC<AccessGateProps> = ({ onUnlock, onCancel }) => {
+export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel }) => {
   const [inputCode, setInputCode] = useState('');
-  const [userName, setUserName] = useState('');
+  const [userName, setUserName] = useState(user?.name || '');
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCodeInput, setShowCodeInput] = useState(false);
 
-  const envCode = process.env.VITE_ACCESS_CODE; 
+  const envCode = process.env.VITE_ACCESS_CODE;
   const validCode = (envCode || 'TEACH2025').trim().toUpperCase();
 
+  const handleStripeCheckout = async () => {
+    const nameAttempt = userName.trim();
+    if (!nameAttempt) {
+      setError('Please enter your Account User Name first.');
+      return;
+    }
+    if (!user) {
+      setError('You must be logged in to start checkout.');
+      return;
+    }
+
+    setIsProcessing(true);
+    setError('');
+
+    try {
+      // Persist the chosen name so we can apply it after the Stripe redirect return.
+      sessionStorage.setItem('pending_stripe_name', nameAttempt);
+
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          userEmail: user.email,
+          userName: nameAttempt
+        })
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.url) {
+        throw new Error(data.error || 'Unable to start Stripe checkout.');
+      }
+
+      // Redirect the browser to Stripe Checkout.
+      window.location.href = data.url;
+    } catch (err: any) {
+      console.error('Stripe checkout error:', err);
+      sessionStorage.removeItem('pending_stripe_name');
+      setError(err?.message || 'Stripe checkout is unavailable. Please try again later.');
+      setIsProcessing(false);
+    }
+  };
+
   const handleCheckout = (provider: string) => {
+    if (provider === 'stripe') {
+      handleStripeCheckout();
+      return;
+    }
+
     const nameAttempt = userName.trim();
     if (!nameAttempt) {
       setError('Please enter your Account User Name first.');
       return;
     }
     setIsProcessing(true);
-    // Simulate payment processing
+    // Simulate payment processing for non-Stripe providers (Google Pay, Square placeholders)
     setTimeout(() => {
       onUnlock(nameAttempt, `BETA_CHECKOUT_${provider.toUpperCase()}`);
       setIsProcessing(false);
@@ -160,7 +215,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ onUnlock, onCancel }) =>
         {isProcessing && (
           <div className="absolute inset-0 bg-white/90 backdrop-blur-md z-50 flex flex-col items-center justify-center animate-fade-in">
              <div className="w-12 h-12 border-4 border-[#81adb3]/20 border-t-[#81adb3] rounded-full animate-spin mb-4"></div>
-             <p className="text-[10px] font-black text-[#81adb3] uppercase tracking-widest animate-pulse">Initializing Secure License...</p>
+             <p className="text-[10px] font-black text-[#81adb3] uppercase tracking-widest animate-pulse">Redirecting to Secure Checkout...</p>
           </div>
         )}
       </div>

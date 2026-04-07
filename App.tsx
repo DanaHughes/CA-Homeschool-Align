@@ -92,6 +92,12 @@ export default function App() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [pendingStandardToSave, setPendingStandardToSave] = useState<Standard | null>(null);
   const [showStudentSelectModal, setShowStudentSelectModal] = useState(false);
+  const [pendingStripeSession, setPendingStripeSession] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('stripe_session_id');
+  });
+  const [stripeStatusMessage, setStripeStatusMessage] = useState<string | null>(null);
   
   // Custom student add/edit modal states
   const [showStudentModal, setShowStudentModal] = useState(false);
@@ -142,6 +148,70 @@ export default function App() {
       setIsAppLoading(false);
     });
   }, []);
+
+  // Detect return from Stripe Checkout and unlock the user once payment is verified.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get('stripe_canceled')) {
+      setStripeStatusMessage('Checkout canceled. You can continue your trial or try again.');
+      const url = new URL(window.location.href);
+      url.searchParams.delete('stripe_canceled');
+      window.history.replaceState({}, '', url.toString());
+    }
+
+    if (!pendingStripeSession || !user) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch('/api/verify-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: pendingStripeSession })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (cancelled) return;
+
+        if (response.ok && data.paid && data.userId === user.id) {
+          const pendingName =
+            sessionStorage.getItem('pending_stripe_name') || data.userName || user.name;
+          await dbService.unlockUser(user.id, pendingName, `STRIPE_${pendingStripeSession}`);
+          setUser({
+            ...user,
+            isPaid: true,
+            name: pendingName,
+            accountTier: 'pro'
+          });
+          sessionStorage.removeItem('pending_stripe_name');
+          setShowPaywall(false);
+          setStripeStatusMessage('Payment confirmed. Your Beta License is now active.');
+        } else if (response.ok && !data.paid) {
+          setStripeStatusMessage('Payment is still processing. Please refresh in a moment.');
+        } else {
+          setStripeStatusMessage(data.error || 'We could not verify your payment. Please contact support.');
+        }
+      } catch (e) {
+        if (!cancelled) {
+          console.error('Stripe verification failed:', e);
+          setStripeStatusMessage('We could not verify your payment. Please contact support.');
+        }
+      } finally {
+        if (!cancelled) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('stripe_session_id');
+          window.history.replaceState({}, '', url.toString());
+          setPendingStripeSession(null);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingStripeSession, user?.id]);
 
 
   const fetchData = async (currentUser?: User | null) => {
@@ -930,15 +1000,35 @@ export default function App() {
   if (isAppLoading) return null;
   if (!user) return <AuthGate onLogin={setUser} onShowTerms={() => setShowTermsModal(true)} />;
   
-  if (showPaywall && !isPro) return <AccessGate onUnlock={(name, code) => { 
-    dbService.unlockUser(user.id, name, code).then(() => {
-      setUser({ ...user, isPaid: true, name: name, accountTier: 'pro' });
-      setShowPaywall(false);
-    });
-  }} onCancel={() => setShowPaywall(false)} />;
+  if (showPaywall && !isPro) return <AccessGate
+    user={user}
+    onUnlock={(name, code) => {
+      dbService.unlockUser(user.id, name, code).then(() => {
+        setUser({ ...user, isPaid: true, name: name, accountTier: 'pro' });
+        setShowPaywall(false);
+      });
+    }}
+    onCancel={() => setShowPaywall(false)}
+  />;
 
   return (
     <div className="min-h-screen flex flex-col font-sans relative pb-32 md:pb-0">
+      {stripeStatusMessage && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[2000] max-w-md w-[92%] no-print">
+          <div className="bg-white border border-[#81adb3]/30 shadow-2xl rounded-3xl px-6 py-4 flex items-start gap-3 animate-fade-in">
+            <div className="flex-grow text-[11px] font-bold text-slate-700 tracking-wide leading-relaxed">
+              {stripeStatusMessage}
+            </div>
+            <button
+              onClick={() => setStripeStatusMessage(null)}
+              className="text-slate-300 hover:text-slate-500 text-lg leading-none font-black"
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
       {showTermsModal && (
         <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 no-print">
             <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-2xl max-w-3xl w-full border border-slate-100 animate-fade-in max-h-[85vh] overflow-y-auto">
