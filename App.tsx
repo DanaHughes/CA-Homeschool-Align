@@ -7,6 +7,7 @@ import { authService } from './services/authService';
 import { StandardCard } from './components/StandardCard';
 import { AccessGate } from './components/AccessGate';
 import { AuthGate } from './components/AuthGate';
+import { ATSResumeScanner } from './components/ATSResumeScanner';
 
 const FREE_SEARCH_LIMIT = 25;
 const PRO_FREE_EMAILS = ['demo@cahomeschool.com', 'dana2andrea@gmail.com'];
@@ -1589,9 +1590,19 @@ export default function App() {
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                 <span className="text-[8px] font-black uppercase tracking-widest">Vault</span>
             </button>
-            <button 
-                onClick={() => { 
-                  setActiveTab('features'); 
+            <button
+                onClick={() => {
+                  setActiveTab('ats');
+                  setViewingStudentId(null);
+                }}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all duration-300 ${activeTab === 'ats' ? 'text-[#81adb3] scale-110' : 'text-slate-500 opacity-60'}`}
+            >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <span className="text-[8px] font-black uppercase tracking-widest">ATS</span>
+            </button>
+            <button
+                onClick={() => {
+                  setActiveTab('features');
                   setViewingStudentId(null);
                 }}
                 className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all duration-300 ${activeTab === 'features' ? 'text-[#f4989c] scale-110' : 'text-slate-500 opacity-60'}`}
@@ -1625,8 +1636,12 @@ export default function App() {
                  setActiveTab('students'); 
                  setViewingStudentId(null);
                }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'students' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Vault</button>
-               <button onClick={() => { 
-                 setActiveTab('features'); 
+               <button onClick={() => {
+                 setActiveTab('ats');
+                 setViewingStudentId(null);
+               }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'ats' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>ATS Scanner</button>
+               <button onClick={() => {
+                 setActiveTab('features');
                  setViewingStudentId(null);
                }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'features' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Start Here</button>
             </nav>
@@ -1978,6 +1993,10 @@ export default function App() {
                        </div>
                    )}
                </div>
+            )}
+
+            {activeTab === 'ats' && (
+                <ATSResumeScanner isPro={isPro} onUpgradeRequest={() => setShowPaywall(true)} />
             )}
 
             {activeTab === 'features' && (

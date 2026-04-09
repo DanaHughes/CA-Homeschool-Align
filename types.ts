@@ -59,4 +59,20 @@ export interface FeatureRequest {
   timestamp: number;
 }
 
-export type TabView = 'search' | 'students' | 'features';
+export interface ATSScoreCategory {
+  name: string;
+  score: number;
+  maxScore: number;
+  feedback: string;
+  suggestions: string[];
+}
+
+export interface ATSScanResult {
+  overallScore: number;
+  readabilityGrade: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+  categories: ATSScoreCategory[];
+  topIssues: string[];
+  summary: string;
+}
+
+export type TabView = 'search' | 'students' | 'features' | 'ats';

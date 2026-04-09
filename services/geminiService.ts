@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
-import { Standard, LearningRecord } from '../types';
+import { Standard, LearningRecord, ATSScanResult } from '../types';
 import { dbService } from './dbService';
 
 
@@ -39,6 +39,34 @@ Do not use bullet points.
 Focus on the 'Learning Journey'.
 `;
 
+
+const ATS_SCANNER_SYSTEM_INSTRUCTION = `
+You are an expert ATS (Applicant Tracking System) Resume Analyst. Analyze the provided resume text and evaluate it across these categories:
+
+1. **Formatting & Structure** (0-20): Clean sections, consistent formatting, proper headings (Experience, Education, Skills), no tables/columns/graphics that ATS can't parse.
+2. **Keyword Optimization** (0-20): Relevant industry keywords, action verbs, measurable achievements, skills alignment with common job descriptions.
+3. **Contact & Header** (0-10): Name, email, phone, LinkedIn, location present and properly formatted at the top.
+4. **Experience Section** (0-20): Reverse chronological order, quantified achievements, action verbs, clear job titles and company names, dates included.
+5. **Readability & Clarity** (0-15): Concise bullet points, no jargon overload, consistent tense, no spelling/grammar issues, appropriate length.
+6. **Skills & Education** (0-15): Relevant skills section, education properly listed, certifications included, no outdated/irrelevant entries.
+
+SCORING GUIDE:
+- 85-100: Excellent - Resume is highly ATS-optimized
+- 70-84: Good - Minor improvements needed
+- 50-69: Fair - Several areas need attention
+- 0-49: Poor - Major overhaul recommended
+
+For each category, provide:
+- A score
+- Brief feedback (1 sentence)
+- 1-3 specific, actionable suggestions
+
+Also provide:
+- An overall score (sum of categories, 0-100)
+- A readabilityGrade (Excellent/Good/Fair/Poor based on scoring guide)
+- Top 3 most critical issues to fix first
+- A 2-3 sentence summary of the resume's ATS readiness
+`;
 
 const MODEL_NAME = 'gemini-3-flash-preview';
 const DAILY_LIMIT = 2000;
@@ -153,6 +181,67 @@ export const explainStandardMatch = async (standard: Standard, query: string): P
  } catch (e) {
    return `During this activity, students can build key academic skills through hands-on learning.`;
  }
+};
+
+
+export const scanResume = async (resumeText: string): Promise<ATSScanResult> => {
+  const currentUsage = await dbService.getDailyUsage();
+  if (currentUsage >= DAILY_LIMIT) {
+    throw new Error("DAILY_LIMIT_REACHED");
+  }
+
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+  const prompt = `Analyze this resume for ATS compatibility and readability:\n\n---\n${resumeText}\n---\n\nReturn your analysis as JSON.`;
+
+  try {
+    const response: GenerateContentResponse = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        systemInstruction: ATS_SCANNER_SYSTEM_INSTRUCTION,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            overallScore: { type: Type.NUMBER },
+            readabilityGrade: { type: Type.STRING },
+            categories: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING },
+                  score: { type: Type.NUMBER },
+                  maxScore: { type: Type.NUMBER },
+                  feedback: { type: Type.STRING },
+                  suggestions: { type: Type.ARRAY, items: { type: Type.STRING } }
+                },
+                required: ["name", "score", "maxScore", "feedback", "suggestions"]
+              }
+            },
+            topIssues: { type: Type.ARRAY, items: { type: Type.STRING } },
+            summary: { type: Type.STRING }
+          },
+          required: ["overallScore", "readabilityGrade", "categories", "topIssues", "summary"]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text || text.trim() === "") {
+      throw new Error("Empty response from AI");
+    }
+
+    dbService.incrementUsage().catch(err => {
+      console.warn('Failed to increment usage stats:', err);
+    });
+
+    return JSON.parse(text) as ATSScanResult;
+  } catch (error) {
+    console.error("ATS Scan Error:", error);
+    throw error;
+  }
 };
 
 
