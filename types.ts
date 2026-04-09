@@ -67,11 +67,19 @@ export interface ATSScoreCategory {
   suggestions: string[];
 }
 
+export interface ATSFlag {
+  excerpt: string;
+  issue: string;
+  severity: 'critical' | 'warning' | 'info';
+  fix: string;
+}
+
 export interface ATSScanResult {
   overallScore: number;
   readabilityGrade: 'Excellent' | 'Good' | 'Fair' | 'Poor';
   categories: ATSScoreCategory[];
   topIssues: string[];
+  flaggedContent: ATSFlag[];
   summary: string;
 }
 

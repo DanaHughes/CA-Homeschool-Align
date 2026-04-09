@@ -61,6 +61,28 @@ For each category, provide:
 - Brief feedback (1 sentence)
 - 1-3 specific, actionable suggestions
 
+CRITICAL — FLAGGED CONTENT DETECTION:
+Scan the resume line by line and flag every specific piece of text that a typical ATS parser (Taleo, Workday, Greenhouse, iCIMS, Lever) would misread, skip, or fail to parse. For each flag, return:
+- "excerpt": the EXACT text from the resume (copy verbatim, 5-80 characters)
+- "issue": what the ATS will do wrong with it (e.g. "ATS will ignore this symbol", "Column layout causes text to merge into gibberish", "Non-standard header — ATS won't recognize this section")
+- "severity": "critical" (ATS will drop or garble this data), "warning" (ATS may misinterpret), or "info" (sub-optimal but parseable)
+- "fix": a concrete rewrite or action (e.g. "Replace '•' with '-'", "Rename to 'Work Experience'")
+
+Common ATS-unreadable patterns to flag:
+- Special characters and symbols (•, →, ★, ■, |, fancy dashes —, em-dashes)
+- Non-standard section headings (e.g. "Where I've Worked" instead of "Experience")
+- Tables, multi-column layouts (detected by irregular spacing/alignment)
+- Dates in non-standard formats (e.g. "Fall 2023" instead of "Sep 2023")
+- Missing critical sections (no Experience, Education, or Skills header)
+- Acronyms/abbreviations without full form on first use
+- URLs that aren't plain text
+- All-caps paragraphs (harder to parse than mixed case)
+- Excessive formatting markers or decorative lines (===, ---, ***)
+- Pronouns and first-person narrative (ATS keyword parsers work better with direct phrases)
+- Vague phrases with no measurable outcome (e.g. "Responsible for various tasks")
+
+Return ALL flags found. If the resume is very clean, return at least any info-level optimizations. An empty flaggedContent array is acceptable only for a near-perfect resume.
+
 Also provide:
 - An overall score (sum of categories, 0-100)
 - A readabilityGrade (Excellent/Good/Fair/Poor based on scoring guide)
@@ -220,10 +242,23 @@ export const scanResume = async (resumeText: string): Promise<ATSScanResult> => 
                 required: ["name", "score", "maxScore", "feedback", "suggestions"]
               }
             },
+            flaggedContent: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  excerpt: { type: Type.STRING },
+                  issue: { type: Type.STRING },
+                  severity: { type: Type.STRING },
+                  fix: { type: Type.STRING }
+                },
+                required: ["excerpt", "issue", "severity", "fix"]
+              }
+            },
             topIssues: { type: Type.ARRAY, items: { type: Type.STRING } },
             summary: { type: Type.STRING }
           },
-          required: ["overallScore", "readabilityGrade", "categories", "topIssues", "summary"]
+          required: ["overallScore", "readabilityGrade", "categories", "flaggedContent", "topIssues", "summary"]
         }
       }
     });

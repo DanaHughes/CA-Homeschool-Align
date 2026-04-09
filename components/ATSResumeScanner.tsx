@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { ATSScanResult } from '../types';
+import { ATSScanResult, ATSFlag } from '../types';
 import { scanResume } from '../services/geminiService';
 
 interface ATSResumeScannerProps {
@@ -78,6 +78,62 @@ const CategoryBar = ({ name, score, maxScore, feedback, suggestions }: {
           ))}
         </ul>
       )}
+    </div>
+  );
+};
+
+const severityConfig = {
+  critical: {
+    bg: 'bg-red-50',
+    border: 'border-red-200',
+    badge: 'bg-red-100 text-red-700 ring-red-200',
+    icon: 'text-red-400',
+    label: 'Critical',
+    barColor: 'bg-red-400',
+  },
+  warning: {
+    bg: 'bg-amber-50',
+    border: 'border-amber-200',
+    badge: 'bg-amber-100 text-amber-700 ring-amber-200',
+    icon: 'text-amber-400',
+    label: 'Warning',
+    barColor: 'bg-amber-400',
+  },
+  info: {
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+    badge: 'bg-blue-100 text-blue-700 ring-blue-200',
+    icon: 'text-blue-400',
+    label: 'Info',
+    barColor: 'bg-blue-400',
+  },
+};
+
+const FlaggedItem = ({ flag }: { flag: ATSFlag }) => {
+  const config = severityConfig[flag.severity] || severityConfig.info;
+
+  return (
+    <div className={`rounded-2xl border ${config.border} ${config.bg} overflow-hidden`}>
+      <div className={`h-1 ${config.barColor}`} />
+      <div className="p-5 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <code className="text-[12px] font-bold text-slate-800 bg-white/70 px-3 py-1.5 rounded-lg border border-slate-200 break-all leading-relaxed">
+            {flag.excerpt}
+          </code>
+          <span className={`px-2 py-0.5 text-[8px] font-black uppercase tracking-widest rounded-md ring-1 flex-shrink-0 ${config.badge}`}>
+            {config.label}
+          </span>
+        </div>
+        <p className="text-[12px] text-slate-600 font-medium leading-relaxed">
+          <span className={`font-black ${config.icon}`}>Issue: </span>{flag.issue}
+        </p>
+        <div className="flex items-start gap-2 bg-white/60 rounded-xl px-4 py-3 border border-slate-100">
+          <svg className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-[12px] text-emerald-700 font-bold leading-relaxed">{flag.fix}</p>
+        </div>
+      </div>
     </div>
   );
 };
@@ -292,6 +348,46 @@ export const ATSResumeScanner: React.FC<ATSResumeScannerProps> = ({ isPro, onUpg
                     <p className="text-sm text-slate-700 font-medium leading-relaxed">{issue}</p>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Flagged Content */}
+          {scanResult.flaggedContent && scanResult.flaggedContent.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-2">
+                <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5.07 19H19a2 2 0 001.75-2.96l-6.93-12a2 2 0 00-3.5 0l-6.93 12A2 2 0 005.07 19z" />
+                  </svg>
+                  ATS-Unreadable Content Flagged
+                </h3>
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const counts = { critical: 0, warning: 0, info: 0 };
+                    scanResult.flaggedContent.forEach(f => { counts[f.severity] = (counts[f.severity] || 0) + 1; });
+                    return (
+                      <>
+                        {counts.critical > 0 && <span className="px-2 py-0.5 text-[8px] font-black bg-red-100 text-red-700 rounded-md ring-1 ring-red-200">{counts.critical} Critical</span>}
+                        {counts.warning > 0 && <span className="px-2 py-0.5 text-[8px] font-black bg-amber-100 text-amber-700 rounded-md ring-1 ring-amber-200">{counts.warning} Warning</span>}
+                        {counts.info > 0 && <span className="px-2 py-0.5 text-[8px] font-black bg-blue-100 text-blue-700 rounded-md ring-1 ring-blue-200">{counts.info} Info</span>}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-400 font-medium px-2">
+                These exact excerpts from your resume will be misread, skipped, or garbled by common ATS parsers (Taleo, Workday, Greenhouse, iCIMS). Fix them for a higher pass-through rate.
+              </p>
+              <div className="grid grid-cols-1 gap-4">
+                {scanResult.flaggedContent
+                  .sort((a, b) => {
+                    const order = { critical: 0, warning: 1, info: 2 };
+                    return (order[a.severity] ?? 2) - (order[b.severity] ?? 2);
+                  })
+                  .map((flag, i) => (
+                    <FlaggedItem key={i} flag={flag} />
+                  ))}
               </div>
             </div>
           )}
