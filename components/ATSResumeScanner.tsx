@@ -143,6 +143,7 @@ export const ATSResumeScanner: React.FC<ATSResumeScannerProps> = ({ isPro, onUpg
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ATSScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showBonusFeedback, setShowBonusFeedback] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleScan = async () => {
@@ -204,6 +205,7 @@ export const ATSResumeScanner: React.FC<ATSResumeScannerProps> = ({ isPro, onUpg
     setScanResult(null);
     setResumeText('');
     setError(null);
+    setShowBonusFeedback(false);
   };
 
   const gradeColor = (grade: string) => {
@@ -227,10 +229,10 @@ export const ATSResumeScanner: React.FC<ATSResumeScannerProps> = ({ isPro, onUpg
           <span className="text-[9px] font-black text-[#81adb3] uppercase tracking-widest">ATS Resume Scanner</span>
         </div>
         <h2 className="text-3xl font-black text-slate-800 tracking-tighter">
-          How ATS-Ready Is Your Resume?
+          Can the ATS Actually Read Your Resume?
         </h2>
         <p className="text-sm text-slate-500 font-medium max-w-xl mx-auto leading-relaxed">
-          Paste your resume below and get instant feedback on how well it will perform with Applicant Tracking Systems. Get a readability score and actionable suggestions.
+          Paste your resume and we'll scan every character, word, and section to find what ATS parsers will drop, garble, or skip. Fix the unparseable content first — everything else is secondary.
         </p>
       </div>
 
@@ -314,71 +316,78 @@ export const ATSResumeScanner: React.FC<ATSResumeScannerProps> = ({ isPro, onUpg
       {/* Results Section */}
       {scanResult && (
         <div className="space-y-8 animate-fade-in">
-          {/* Overall Score Card */}
+          {/* Overall Score + Parseability Summary */}
           <div className="bg-white p-8 md:p-10 rounded-[3rem] shadow-sm border border-slate-100">
             <div className="flex flex-col md:flex-row items-center gap-8">
               <ScoreRing score={scanResult.overallScore} />
               <div className="flex-1 text-center md:text-left space-y-3">
-                <div className="flex items-center gap-3 justify-center md:justify-start">
-                  <h3 className="text-2xl font-black text-slate-800 tracking-tighter">ATS Readability Score</h3>
+                <div className="flex items-center gap-3 justify-center md:justify-start flex-wrap">
+                  <h3 className="text-2xl font-black text-slate-800 tracking-tighter">ATS Parseability Score</h3>
                   <span className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg ring-1 ${gradeColor(scanResult.readabilityGrade)}`}>
                     {scanResult.readabilityGrade}
                   </span>
                 </div>
                 <p className="text-sm text-slate-500 font-medium leading-relaxed">{scanResult.summary}</p>
+                {scanResult.flaggedContent && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Found:</span>
+                    {(() => {
+                      const counts = { critical: 0, warning: 0, info: 0 };
+                      scanResult.flaggedContent.forEach(f => { counts[f.severity] = (counts[f.severity] || 0) + 1; });
+                      return (
+                        <>
+                          {counts.critical > 0 && <span className="px-2 py-0.5 text-[8px] font-black bg-red-100 text-red-700 rounded-md ring-1 ring-red-200">{counts.critical} unparseable</span>}
+                          {counts.warning > 0 && <span className="px-2 py-0.5 text-[8px] font-black bg-amber-100 text-amber-700 rounded-md ring-1 ring-amber-200">{counts.warning} risky</span>}
+                          {counts.info > 0 && <span className="px-2 py-0.5 text-[8px] font-black bg-blue-100 text-blue-700 rounded-md ring-1 ring-blue-200">{counts.info} sub-optimal</span>}
+                          {counts.critical === 0 && counts.warning === 0 && counts.info === 0 && <span className="px-2 py-0.5 text-[8px] font-black bg-emerald-100 text-emerald-700 rounded-md ring-1 ring-emerald-200">Clean parse</span>}
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Top Issues */}
-          {scanResult.topIssues.length > 0 && (
-            <div className="bg-[#e7b64f]/5 p-8 md:p-10 rounded-[3rem] border border-[#e7b64f]/20">
-              <h3 className="text-[11px] font-black uppercase tracking-widest text-[#b8922e] mb-5 flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-                Fix These First
-              </h3>
-              <div className="space-y-3">
-                {scanResult.topIssues.map((issue, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <span className="w-6 h-6 bg-[#e7b64f] text-white rounded-lg flex items-center justify-center font-black text-[10px] flex-shrink-0 mt-0.5">
-                      {i + 1}
-                    </span>
-                    <p className="text-sm text-slate-700 font-medium leading-relaxed">{issue}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Flagged Content */}
+          {/* === PRIMARY: Flagged Content (the hero section) === */}
           {scanResult.flaggedContent && scanResult.flaggedContent.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between px-2">
-                <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                  <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="space-y-5">
+              <div className="px-2 space-y-2">
+                <h3 className="text-lg font-black text-slate-800 tracking-tighter flex items-center gap-2">
+                  <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5.07 19H19a2 2 0 001.75-2.96l-6.93-12a2 2 0 00-3.5 0l-6.93 12A2 2 0 005.07 19z" />
                   </svg>
-                  ATS-Unreadable Content Flagged
+                  Content the ATS Cannot Parse
                 </h3>
-                <div className="flex items-center gap-2">
-                  {(() => {
-                    const counts = { critical: 0, warning: 0, info: 0 };
-                    scanResult.flaggedContent.forEach(f => { counts[f.severity] = (counts[f.severity] || 0) + 1; });
-                    return (
-                      <>
-                        {counts.critical > 0 && <span className="px-2 py-0.5 text-[8px] font-black bg-red-100 text-red-700 rounded-md ring-1 ring-red-200">{counts.critical} Critical</span>}
-                        {counts.warning > 0 && <span className="px-2 py-0.5 text-[8px] font-black bg-amber-100 text-amber-700 rounded-md ring-1 ring-amber-200">{counts.warning} Warning</span>}
-                        {counts.info > 0 && <span className="px-2 py-0.5 text-[8px] font-black bg-blue-100 text-blue-700 rounded-md ring-1 ring-blue-200">{counts.info} Info</span>}
-                      </>
-                    );
-                  })()}
-                </div>
+                <p className="text-[12px] text-slate-400 font-medium leading-relaxed">
+                  Each item below is an exact excerpt from your resume that ATS software will misread, skip, or garble.
+                  Fix these first — no amount of keyword optimization matters if the parser can't extract your data.
+                </p>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium px-2">
-                These exact excerpts from your resume will be misread, skipped, or garbled by common ATS parsers (Taleo, Workday, Greenhouse, iCIMS). Fix them for a higher pass-through rate.
-              </p>
+
+              {/* Top parseability issues callout */}
+              {scanResult.topIssues.length > 0 && (
+                <div className="bg-[#e7b64f]/5 p-6 md:p-8 rounded-[2rem] border border-[#e7b64f]/20">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-[#b8922e] mb-4 flex items-center gap-2">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                    Highest Impact Fixes
+                  </h4>
+                  <div className="space-y-2.5">
+                    {scanResult.topIssues.map((issue, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <span className="w-5 h-5 bg-[#e7b64f] text-white rounded-lg flex items-center justify-center font-black text-[9px] flex-shrink-0 mt-0.5">
+                          {i + 1}
+                        </span>
+                        <p className="text-[13px] text-slate-700 font-medium leading-relaxed">{issue}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* All flagged excerpts */}
               <div className="grid grid-cols-1 gap-4">
                 {scanResult.flaggedContent
                   .sort((a, b) => {
@@ -392,14 +401,45 @@ export const ATSResumeScanner: React.FC<ATSResumeScannerProps> = ({ isPro, onUpg
             </div>
           )}
 
-          {/* Category Breakdown */}
-          <div className="space-y-4">
-            <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 px-2">Detailed Breakdown</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {scanResult.categories.map((cat, i) => (
-                <CategoryBar key={i} {...cat} />
-              ))}
+          {/* No flags — clean resume */}
+          {(!scanResult.flaggedContent || scanResult.flaggedContent.length === 0) && (
+            <div className="bg-emerald-50 p-8 md:p-10 rounded-[3rem] border border-emerald-200 text-center space-y-3">
+              <svg className="w-10 h-10 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h3 className="text-lg font-black text-emerald-800 tracking-tighter">Clean Parse</h3>
+              <p className="text-sm text-emerald-600 font-medium">No unparseable content detected. Every character, word, and section of your resume should be extractable by standard ATS software.</p>
             </div>
+          )}
+
+          {/* === SECONDARY: Bonus Category Feedback (collapsible) === */}
+          <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+            <button
+              onClick={() => setShowBonusFeedback(!showBonusFeedback)}
+              className="w-full px-8 md:px-10 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">Bonus Feedback</span>
+                <span className="px-2 py-0.5 text-[8px] font-black bg-slate-100 text-slate-500 rounded-md">6 Categories</span>
+              </div>
+              <div className={`p-1 rounded bg-slate-100 transform transition-transform ${showBonusFeedback ? 'rotate-180' : ''}`}>
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </button>
+            {showBonusFeedback && (
+              <div className="px-8 md:px-10 pb-8 space-y-4 animate-fade-in border-t border-slate-50">
+                <p className="text-[11px] text-slate-400 font-medium pt-4">
+                  Style, content quality, and optimization tips — useful after you've fixed all parseability issues above.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {scanResult.categories.map((cat, i) => (
+                    <CategoryBar key={i} {...cat} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Actions */}
