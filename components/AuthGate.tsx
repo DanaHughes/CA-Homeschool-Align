@@ -54,7 +54,9 @@ export const AuthGate: React.FC<AuthGateProps> = ({ onLogin, onShowTerms }) => {
       }
     } catch (err: any) {
       console.error("Auth Error:", err);
-      if (err.message?.includes('auth/invalid-credential') || err.message?.includes('auth/user-not-found')) {
+      if (err.code === 'auth/api-key-not-valid' || err.message?.includes('api-key-not-valid')) {
+        setError("Firebase API key is missing or invalid. Set VITE_FIREBASE_API_KEY in .env.local (see .env.example), then restart the dev server or redeploy.");
+      } else if (err.message?.includes('auth/invalid-credential') || err.message?.includes('auth/user-not-found')) {
         setError("Account not found or password incorrect.");
       } else if (err.message?.includes('auth/email-already-in-use')) {
         setError("This email is already registered. Try logging in instead, or use a different email.");
