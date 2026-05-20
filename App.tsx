@@ -11,7 +11,7 @@ import { AuthGate } from './components/AuthGate';
 const FREE_SEARCH_LIMIT = 25;
 const PRO_FREE_EMAILS = ['demo@cahomeschool.com', 'dana2andrea@gmail.com'];
 const APP_VERSION = "1.6.0"; 
-const WORK_SAMPLE_GUIDE_URL = "https://sites.google.com/view/charterhomeschoolhelp/the-17-sample-shortcut";
+const const BLUEPRINT_GUIDE_URL = "https://www.charterhomeschoolhelp.com/products/the-charter-homeschool-blueprint"; = "https://sites.google.com/view/charterhomeschoolhelp/the-17-sample-shortcut";
 
 interface LearningPeriod {
   id: string;
@@ -1541,7 +1541,7 @@ export default function App() {
                     
                     <div className="pt-6 flex flex-col items-center">
                         <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-4 text-center max-w-md">
-                            Need help turning match logic into charter-approved work samples? <a href={WORK_SAMPLE_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="text-[#81adb3] font-black hover:underline underline-offset-2">Check out our comprehensive guide</a>.
+                            Need help turning match logic into charter-approved work samples? <a href={BLUEPRINT_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="text-[#81adb3] font-black hover:underline underline-offset-2">Check out our comprehensive Charter Homeschool Blueprint</a>.
                         </p>
                         <button onClick={() => setShowExportModal(false)} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">Cancel</button>
                     </div>
@@ -2027,7 +2027,7 @@ export default function App() {
                             <div className="pb-6">
                                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-3">How do I turn this into charter-approved work samples?</h3>
                                 <p className="text-sm text-slate-600 leading-relaxed">
-                                    The inferred match logic provided by this tool is a starting point. To create charter-compliant work samples, check out our comprehensive guide: <a href={WORK_SAMPLE_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="text-[#81adb3] font-black hover:underline">The Work Sample Shortcut</a>. This guide shows you how to document learning in formats your charter will accept.
+                                    The inferred match logic provided by this tool is a starting point. To create charter-compliant work samples, Check out our comprehensive Charter Homeschool Blueprint: <a href={BLUEPRINT_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="text-[#81adb3] font-black hover:underline">The Charter Homeschool Blueprint</a>. This guide shows you how to document learning in formats your charter will accept.
                                 </p>
                             </div>
                         </div>
