@@ -11,7 +11,7 @@ import { AuthGate } from './components/AuthGate';
 const FREE_SEARCH_LIMIT = 25;
 const PRO_FREE_EMAILS = ['demo@cahomeschool.com', 'dana2andrea@gmail.com'];
 const APP_VERSION = "1.6.0"; 
-const const BLUEPRINT_GUIDE_URL = "https://www.charterhomeschoolhelp.com/products/the-charter-homeschool-blueprint"; = "https://sites.google.com/view/charterhomeschoolhelp/the-17-sample-shortcut";
+const BLUEPRINT_GUIDE_URL = "https://www.charterhomeschoolhelp.com/products/the-charter-homeschool-blueprint";
 
 interface LearningPeriod {
   id: string;
