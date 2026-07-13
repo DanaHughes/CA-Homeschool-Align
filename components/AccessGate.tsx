@@ -134,7 +134,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#81adb3] text-white px-5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg">Special Beta Pricing</div>
             
             <div className="text-center space-y-2 mb-8">
-                <h4 className="text-5xl font-black text-slate-800 tracking-tighter">$25</h4>
+                <h4 className="text-5xl font-black text-slate-800 tracking-tighter">$59</h4>
                 <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">1-Year Digital License</p>
             </div>
 
@@ -146,7 +146,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
             
             <div className="mt-8 pt-6 border-t border-slate-100">
                 <p className="text-[8px] font-bold text-[#f4989c] uppercase tracking-widest text-center leading-relaxed">
-                   ⚠️ Disclaimer: This $25 beta rate is for early adopters. Renewal for the 2026 school year will reflect standard market pricing.
+                   ⚠️ Disclaimer: This $59 beta rate is for early adopters. Renewal for the 2026 school year will reflect standard market pricing.
                 </p>
             </div>
         </div>
