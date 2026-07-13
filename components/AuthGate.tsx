@@ -80,8 +80,11 @@ export const AuthGate: React.FC<AuthGateProps> = ({ onLogin, onShowTerms }) => {
             <h1 className="text-4xl font-black text-slate-800 tracking-tighter leading-tight mb-2">
                 Homeschool Work Sample Pro
             </h1>
-            <p className="text-[#81adb3] text-[11px] font-black uppercase tracking-[0.2em] mb-6 leading-relaxed max-w-[280px] mx-auto">
-                From photo or keyword to charter-ready work sample in under a minute.
+            <p className="text-[#81adb3] text-[11px] font-black uppercase tracking-[0.2em] mb-4 leading-relaxed max-w-[280px] mx-auto">
+                MAKING HOMESCHOOL DOABLE.
+            </p>
+            <p className="text-slate-400 text-[11px] font-medium leading-relaxed max-w-[320px] mx-auto mb-6">
+                Turn any homeschool activity into a charter-ready work sample with AI. Just snap a photo or describe the activity, and we'll match standards, generate documentation, and create a polished PDF in seconds.
             </p>
         </div>
 
