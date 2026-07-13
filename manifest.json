@@ -1,8 +1,8 @@
 
 {
-  "name": "CA Homeschool Align",
-  "short_name": "CA Align",
-  "description": "Align homeschool activities to CA state standards.",
+  "name": "Homeschool Work Sample Pro",
+  "short_name": "HWSP",
+  "description": "Match homeschool activities to CA state standards and generate work sample documentation.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",

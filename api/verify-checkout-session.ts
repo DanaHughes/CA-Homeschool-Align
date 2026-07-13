@@ -1,5 +1,5 @@
 /**
- * Server-side endpoint for CA Homeschool Align
+ * Server-side endpoint for Homeschool Work Sample Pro
  * Verifies a Stripe Checkout Session after the user returns from Stripe.
  *
  * Required environment variables:

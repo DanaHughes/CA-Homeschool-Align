@@ -1,5 +1,5 @@
 /**
- * Server-side endpoint for CA Homeschool Align
+ * Server-side endpoint for Homeschool Work Sample Pro
  * Sends feature requests and help tickets to the owner.
  */
 
@@ -22,7 +22,7 @@ export default async function handler(req: any, res: any) {
   // This endpoint uses environment variables for provider credentials.
   
   const recipientEmail = "thelearninglabhubinfo@gmail.com";
-  const subject = "New Request – CA Homeschool Align";
+  const subject = "New Request – Homeschool Work Sample Pro";
   const humanReadableTime = new Date(timestamp).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
 
   const emailBody = `

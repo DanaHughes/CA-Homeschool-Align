@@ -78,10 +78,10 @@ export const AuthGate: React.FC<AuthGateProps> = ({ onLogin, onShowTerms }) => {
         <div className="text-center mb-10">
             <LogoIcon className="mx-auto mb-8" />
             <h1 className="text-4xl font-black text-slate-800 tracking-tighter leading-tight mb-2">
-                CA Homeschool Align
+                Homeschool Work Sample Pro
             </h1>
             <p className="text-[#81adb3] text-[11px] font-black uppercase tracking-[0.2em] mb-6 leading-relaxed max-w-[280px] mx-auto">
-                MAKING HOMESCHOOL DOABLE.
+                From photo or keyword to charter-ready work sample in under a minute.
             </p>
         </div>
 

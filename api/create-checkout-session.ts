@@ -1,5 +1,5 @@
 /**
- * Server-side endpoint for CA Homeschool Align
+ * Server-side endpoint for Homeschool Work Sample Pro
  * Creates a Stripe Checkout Session for the Beta License purchase.
  *
  * Required environment variables:
