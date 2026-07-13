@@ -84,7 +84,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ onLogin, onShowTerms }) => {
                 MAKING HOMESCHOOL DOABLE.
             </p>
             <p className="text-slate-400 text-[11px] font-medium leading-relaxed max-w-[320px] mx-auto mb-6">
-                Turn any homeschool activity into a charter-ready work sample with AI. Just snap a photo or describe the activity, and we'll match standards, generate documentation, and create a polished PDF in seconds.
+                Turn any homeschool activity into a charter-ready work sample. Just snap a photo or describe the activity, and we'll match standards, generate documentation, and create a polished PDF in seconds.
             </p>
         </div>
 
