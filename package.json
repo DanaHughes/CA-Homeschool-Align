@@ -1,5 +1,5 @@
 {
-  "name": "ca-homeschool-alignment-tool",
+  "name": "homeschool-work-sample-pro",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
@@ -13,7 +13,8 @@
     "react-dom": "^18.3.1",
     "recharts": "^2.12.7",
     "firebase": "^10.8.0",
-    "jspdf": "^2.5.2"
+    "jspdf": "^2.5.2",
+    "stripe": "^17.0.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",

@@ -4,7 +4,7 @@ import { dbService } from './dbService';
 
 
 const SEARCH_SYSTEM_INSTRUCTION = `
-You are the "CA Homeschool Align" expert. Use ONLY current CA State Standards (CCSS, NGSS, HSS).
+You are the "Homeschool Work Sample Pro" expert. Use ONLY current CA State Standards (CCSS, NGSS, HSS).
 Find the absolute best 4-6 matches for the described activity or visual evidence.
 
 
