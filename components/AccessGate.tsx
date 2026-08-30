@@ -27,6 +27,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCodeInput, setShowCodeInput] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'annual' | 'monthly'>('annual');
 
   const envCode = process.env.VITE_ACCESS_CODE;
   const validCode = (envCode || 'TEACH2025').trim().toUpperCase();
@@ -55,7 +56,8 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
         body: JSON.stringify({
           userId: user.id,
           userEmail: user.email,
-          userName: nameAttempt
+          userName: nameAttempt,
+          plan: selectedPlan
         })
       });
 
@@ -129,24 +131,47 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
             />
         </div>
 
-        {/* Pricing Card */}
-        <div className="mb-10 p-8 rounded-[2.5rem] bg-gradient-to-br from-[#81adb3]/5 to-[#e7b64f]/5 border-2 border-[#81adb3]/20 relative group">
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#81adb3] text-white px-5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg">Special Beta Pricing</div>
-            
-            <div className="text-center space-y-2 mb-8">
-                <h4 className="text-5xl font-black text-slate-800 tracking-tighter">$59</h4>
-                <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">1-Year Digital License</p>
+        {/* Plan Selector */}
+        <div className="mb-10 relative">
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#81adb3] text-white px-5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg z-10">Special Beta Pricing</div>
+
+            <div className="grid grid-cols-2 gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPlan('monthly')}
+                  className={`p-6 rounded-[2rem] border-2 transition-all text-center ${
+                    selectedPlan === 'monthly'
+                      ? 'border-[#81adb3] bg-[#81adb3]/5 shadow-lg'
+                      : 'border-slate-100 bg-white hover:border-slate-200'
+                  }`}
+                >
+                    <h4 className="text-3xl font-black text-slate-800 tracking-tighter">$7.99</h4>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mt-1">Per Month</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPlan('annual')}
+                  className={`p-6 rounded-[2rem] border-2 transition-all text-center relative ${
+                    selectedPlan === 'annual'
+                      ? 'border-[#e7b64f] bg-[#e7b64f]/5 shadow-lg'
+                      : 'border-slate-100 bg-white hover:border-slate-200'
+                  }`}
+                >
+                    <div className="absolute -top-2.5 right-4 bg-[#e7b64f] text-white px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider">Save 38%</div>
+                    <h4 className="text-3xl font-black text-slate-800 tracking-tighter">$59</h4>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mt-1">Per Year</p>
+                </button>
             </div>
 
-            <div className="space-y-3">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center px-4 leading-relaxed">
+            <div className="mt-6 text-center">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-4 leading-relaxed">
                    Unlimited Standards Alignment • Infinite Vault Storage • Official PDF Transcripts • Lifetime Beta Badge
                 </p>
             </div>
-            
-            <div className="mt-8 pt-6 border-t border-slate-100">
+
+            <div className="mt-4">
                 <p className="text-[8px] font-bold text-[#f4989c] uppercase tracking-widest text-center leading-relaxed">
-                   ⚠️ Disclaimer: This $59 beta rate is for early adopters. Renewal for the 2026 school year will reflect standard market pricing.
+                   Beta pricing for early adopters. Renewal rates may reflect standard market pricing.
                 </p>
             </div>
         </div>
