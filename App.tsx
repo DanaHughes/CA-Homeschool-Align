@@ -628,6 +628,14 @@ export default function App() {
       }
     } catch (e: any) {
       console.error("Search Error:", e);
+      const msg = String(e?.message || '');
+      if (msg === 'DAILY_LIMIT_REACHED') {
+        alert("The AI has reached its daily limit. Please try again tomorrow.");
+      } else if (msg === 'RATE_LIMITED') {
+        alert("You're searching very quickly. Please wait a few minutes and try again.");
+      } else {
+        alert("Sorry, the search didn't work. Please check your connection and try again.");
+      }
     } finally { 
       setIsSearching(false); 
       setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); 
