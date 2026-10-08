@@ -10,7 +10,7 @@ Dana is **not a coder**. Make **no assumptions** about what she knows.
 5. **Never ask her to paste secrets** (API keys, passwords, tokens) into the chat or into files. Ask for the last 4 characters or a screenshot with the value covered.
 6. **Confirm understanding before moving on** when a step involves something new to her.
 7. **Say "I don't know" or "my best guess is..."** when something is uncertain. Do not present a guess as fact.
-8. When something is risky or hard to undo (deleting keys, changing live settings), explain what it does and how to undo it **before** asking her to do it.
+8. Only warn Dana about undoing something when a step you ask HER to do is NOT reversible (for example deleting a key or permanently deleting data). For steps that can be reversed, do not explain undo options up front; give them only if something goes wrong or she asks. (Changed by Dana 2026-10-08.) For an irreversible step, explain what it does and that it cannot be undone **before** asking her to do it.
 
 ## Project context
 - The app is "CA Homeschool Align" (also called "Homeschool Work Sample Pro" in some places), deployed on Google Cloud Run in project `gen-lang-client-0991571292` (project number 480626814684), service `ca-homeschool-align`, region `us-west1`.
