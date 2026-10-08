@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Standard, Student, LearningRecord, TabView, User } from './types';
+import { Standard, Student, LearningRecord, TabView, User, LearningPeriod, AppMessage } from './types';
 import { searchStandards, explainStandardMatch } from './services/geminiService';
 import { dbService } from './services/dbService';
 import { authService } from './services/authService';
@@ -13,12 +13,7 @@ const PRO_FREE_EMAILS = ['demo@cahomeschool.com', 'dana2andrea@gmail.com'];
 const APP_VERSION = "1.6.0"; 
 const BLUEPRINT_GUIDE_URL = "https://www.charterhomeschoolhelp.com/products/the-charter-homeschool-blueprint";
 
-interface LearningPeriod {
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-}
+const ADMIN_EMAIL = 'dana2andrea@gmail.com';
 
 const LogoIcon = ({ className = "w-24 h-8" }) => (
   <div className={`${className} bg-gradient-to-r from-[#81adb3] via-[#e7b64f] to-[#f4989c] rounded-full flex items-center justify-center shadow-md relative no-print`}>
@@ -127,6 +122,21 @@ export default function App() {
   const [showLPModal, setShowLPModal] = useState(false);
   const [showLPCalendar, setShowLPCalendar] = useState(false);
   const [selectedLPForExport, setSelectedLPForExport] = useState<string>('');
+
+  // Copy calendar settings to other students
+  const [showCopyModal, setShowCopyModal] = useState(false);
+  const [copyTargetIds, setCopyTargetIds] = useState<string[]>([]);
+  const [isCopying, setIsCopying] = useState(false);
+
+  // Report a bug
+  const [showBugModal, setShowBugModal] = useState(false);
+  const [bugText, setBugText] = useState('');
+  const [isSendingBug, setIsSendingBug] = useState(false);
+
+  // Admin: in-app messages
+  const [adminMessages, setAdminMessages] = useState<AppMessage[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [messagesError, setMessagesError] = useState('');
   
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -446,16 +456,34 @@ export default function App() {
     }
   };
 
-  const saveSchoolYearConfig = () => {
-    // Save to localStorage for now (could be saved to user profile in DB later)
-    if (schoolYearLabel) localStorage.setItem('schoolYearLabel', schoolYearLabel);
-    if (schoolYearStart) localStorage.setItem('schoolYearStart', schoolYearStart);
-    if (schoolYearEnd) localStorage.setItem('schoolYearEnd', schoolYearEnd);
-    setShowSchoolYearModal(false);
+  // Calendar settings (school year + Learning Periods) are saved on each student
+  // in the account database, so they follow the family to any device.
+  const saveStudentCalendar = async (
+    studentId: string,
+    calendar: { schoolYearLabel: string; schoolYearStart: string; schoolYearEnd: string; learningPeriods: LearningPeriod[] }
+  ): Promise<boolean> => {
+    try {
+      await dbService.updateStudent(studentId, calendar);
+      setStudents(prev => prev.map(s => s.id === studentId ? { ...s, ...calendar } : s));
+      return true;
+    } catch (error) {
+      console.error('Could not save calendar settings:', error);
+      alert('Sorry, your calendar settings could not be saved. Please check your internet connection and try again.');
+      return false;
+    }
+  };
+
+  const saveSchoolYearConfig = async () => {
+    if (!viewingStudentId) return;
+    const saved = await saveStudentCalendar(viewingStudentId, {
+      schoolYearLabel, schoolYearStart, schoolYearEnd, learningPeriods
+    });
+    if (saved) setShowSchoolYearModal(false);
   };
 
   // Learning Period functions
-  const saveLearningPeriod = () => {
+  const saveLearningPeriod = async () => {
+    if (!viewingStudentId) return;
     if (!lpName || !lpStartDate || !lpEndDate) {
       alert('Please fill in all learning period fields.');
       return;
@@ -469,11 +497,12 @@ export default function App() {
       ? learningPeriods.map(lp => lp.id === editingLP.id ? newLP : lp)
       : [...learningPeriods, newLP];
 
-    setLearningPeriods(updatedLPs);
-    if (user) {
-      localStorage.setItem(`learningPeriods_${user.id}`, JSON.stringify(updatedLPs));
-    }
+    const saved = await saveStudentCalendar(viewingStudentId, {
+      schoolYearLabel, schoolYearStart, schoolYearEnd, learningPeriods: updatedLPs
+    });
+    if (!saved) return;
 
+    setLearningPeriods(updatedLPs);
     setLpName('');
     setLpStartDate('');
     setLpEndDate('');
@@ -481,13 +510,105 @@ export default function App() {
     setShowLPModal(false);
   };
 
-  const deleteLearningPeriod = (id: string) => {
+  const deleteLearningPeriod = async (id: string) => {
+    if (!viewingStudentId) return;
     if (!confirm('Are you sure you want to delete this learning period?')) return;
 
     const updatedLPs = learningPeriods.filter(lp => lp.id !== id);
-    setLearningPeriods(updatedLPs);
-    if (user) {
-      localStorage.setItem(`learningPeriods_${user.id}`, JSON.stringify(updatedLPs));
+    const saved = await saveStudentCalendar(viewingStudentId, {
+      schoolYearLabel, schoolYearStart, schoolYearEnd, learningPeriods: updatedLPs
+    });
+    if (saved) setLearningPeriods(updatedLPs);
+  };
+
+  // Copy the open student's school year + Learning Periods to the students ticked in the copy window.
+  const copyCalendarToStudents = async () => {
+    if (!viewingStudentId || copyTargetIds.length === 0) return;
+    setIsCopying(true);
+    try {
+      const calendar = { schoolYearLabel, schoolYearStart, schoolYearEnd, learningPeriods };
+      for (const targetId of copyTargetIds) {
+        const ok = await saveStudentCalendar(targetId, calendar);
+        if (!ok) return;
+      }
+      setShowCopyModal(false);
+      setCopyTargetIds([]);
+      alert(`Calendar copied to ${copyTargetIds.length} student${copyTargetIds.length === 1 ? '' : 's'}.`);
+    } finally {
+      setIsCopying(false);
+    }
+  };
+
+  // Older versions saved these dates in this web browser only. If this student has
+  // no saved calendar yet and the browser still has old dates, offer to use them.
+  const getBrowserSavedCalendar = () => {
+    try {
+      const label = localStorage.getItem('schoolYearLabel') || '';
+      const start = localStorage.getItem('schoolYearStart') || '';
+      const end = localStorage.getItem('schoolYearEnd') || '';
+      let lps: LearningPeriod[] = [];
+      if (user) {
+        const raw = localStorage.getItem(`learningPeriods_${user.id}`);
+        if (raw) lps = JSON.parse(raw);
+      }
+      if (!label && !start && !end && lps.length === 0) return null;
+      return { schoolYearLabel: label, schoolYearStart: start, schoolYearEnd: end, learningPeriods: lps };
+    } catch {
+      return null;
+    }
+  };
+
+  const useBrowserCalendarForStudent = async () => {
+    const found = getBrowserSavedCalendar();
+    if (!found || !viewingStudentId) return;
+    const saved = await saveStudentCalendar(viewingStudentId, found);
+    if (saved) {
+      setSchoolYearLabel(found.schoolYearLabel);
+      setSchoolYearStart(found.schoolYearStart);
+      setSchoolYearEnd(found.schoolYearEnd);
+      setLearningPeriods(found.learningPeriods);
+    }
+  };
+
+  const handleSubmitBug = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bugText.trim() || !user) return;
+    setIsSendingBug(true);
+    try {
+      await dbService.submitMessage({
+        type: 'bug',
+        userId: user.id,
+        userEmail: user.email,
+        userName: user.name,
+        accountTier: user.accountTier,
+        message: bugText.trim(),
+        page: activeTab,
+        appVersion: APP_VERSION,
+        browser: navigator.userAgent,
+        timestamp: Date.now(),
+        status: 'new'
+      });
+      setBugText('');
+      setShowBugModal(false);
+      alert('Thank you! Your note was sent. If we need more details, we will email you.');
+    } catch (error) {
+      console.error('Could not send bug report:', error);
+      alert('Sorry, your note could not be sent. Please try again in a few minutes.');
+    } finally {
+      setIsSendingBug(false);
+    }
+  };
+
+  const loadAdminMessages = async () => {
+    setIsLoadingMessages(true);
+    setMessagesError('');
+    try {
+      setAdminMessages(await dbService.getMessages());
+    } catch (error) {
+      console.error('Could not load messages:', error);
+      setMessagesError('Messages could not be loaded. The updated database rules may not be published yet.');
+    } finally {
+      setIsLoadingMessages(false);
     }
   };
 
@@ -528,27 +649,20 @@ export default function App() {
 
   const currentLP = getCurrentLP();
 
-  // Load school year config and Learning Periods on mount
+  // Load the open student's calendar settings (school year + Learning Periods)
   useEffect(() => {
-    const savedLabel = localStorage.getItem('schoolYearLabel');
-    const savedStart = localStorage.getItem('schoolYearStart');
-    const savedEnd = localStorage.getItem('schoolYearEnd');
-    if (savedLabel) setSchoolYearLabel(savedLabel);
-    if (savedStart) setSchoolYearStart(savedStart);
-    if (savedEnd) setSchoolYearEnd(savedEnd);
-    
-    // Load Learning Periods
-    if (user) {
-      const savedLPs = localStorage.getItem(`learningPeriods_${user.id}`);
-      if (savedLPs) {
-        try {
-          setLearningPeriods(JSON.parse(savedLPs));
-        } catch (e) {
-          console.error('Error parsing learning periods:', e);
-        }
-      }
-    }
-  }, [user]);
+    const student = students.find(s => s.id === viewingStudentId);
+    setSchoolYearLabel(student?.schoolYearLabel || '');
+    setSchoolYearStart(student?.schoolYearStart || '');
+    setSchoolYearEnd(student?.schoolYearEnd || '');
+    setLearningPeriods(student?.learningPeriods || []);
+  }, [viewingStudentId, students]);
+
+  // Admin: load messages when the Admin tab opens
+  useEffect(() => {
+    if (activeTab === 'admin' && user?.email === ADMIN_EMAIL) loadAdminMessages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, user?.email]);
 
   const handleUpdateRefresh = () => {
     localStorage.setItem('app_version', APP_VERSION);
@@ -1211,13 +1325,77 @@ export default function App() {
         </div>
       )}
 
+      {showCopyModal && viewingStudentId && (
+        <div className="fixed inset-0 z-[800] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-6 no-print">
+          <div className="bg-white p-10 rounded-[3rem] shadow-2xl max-w-lg w-full animate-fade-in border border-slate-100 max-h-[85vh] overflow-y-auto">
+            <h3 className="text-2xl font-black text-slate-800 mb-4 tracking-tighter text-center">Copy Calendar</h3>
+            <p className="text-sm text-slate-500 mb-6 text-center">
+              Copy {activeViewingStudent?.name}'s school year dates and {learningPeriods.length} Learning Period{learningPeriods.length === 1 ? '' : 's'} to the students you tick below.
+            </p>
+            <div className="space-y-3">
+              {students.filter(s => s.id !== viewingStudentId).map(s => {
+                const hasCalendar = !!(s.schoolYearLabel || s.schoolYearStart || s.schoolYearEnd || (s.learningPeriods && s.learningPeriods.length > 0));
+                return (
+                  <label key={s.id} className="flex items-center gap-4 p-4 rounded-2xl border-2 border-slate-100 cursor-pointer hover:border-[#81adb3] transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={copyTargetIds.includes(s.id)}
+                      onChange={(e) => setCopyTargetIds(prev => e.target.checked ? [...prev, s.id] : prev.filter(id => id !== s.id))}
+                      className="w-5 h-5 accent-[#81adb3]"
+                    />
+                    <span className="flex-1">
+                      <span className="block font-black text-slate-800 text-sm">{s.name}</span>
+                      <span className="block text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        Grade {s.gradeLevel}{hasCalendar ? ' • has a calendar (will be replaced)' : ''}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="flex gap-3 mt-8">
+              <button onClick={() => setShowCopyModal(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 font-black rounded-2xl uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all">Cancel</button>
+              <button
+                onClick={copyCalendarToStudents}
+                disabled={copyTargetIds.length === 0 || isCopying}
+                className="flex-1 py-4 bg-[#81adb3] text-white font-black rounded-2xl uppercase tracking-widest text-[10px] hover:bg-[#6d969c] transition-all shadow-lg disabled:opacity-40"
+              >
+                {isCopying ? 'Copying...' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBugModal && (
+        <div className="fixed inset-0 z-[800] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-6 no-print">
+          <form onSubmit={handleSubmitBug} className="bg-white p-10 rounded-[3rem] shadow-2xl max-w-lg w-full animate-fade-in border border-slate-100">
+            <h3 className="text-2xl font-black text-slate-800 mb-4 tracking-tighter text-center">Report a Bug</h3>
+            <p className="text-sm text-slate-500 mb-6 text-center">Tell us what happened and what you expected. We will see your name and email with it, so we can follow up.</p>
+            <textarea
+              value={bugText}
+              onChange={(e) => setBugText(e.target.value)}
+              maxLength={4000}
+              placeholder="What went wrong?"
+              className="w-full px-6 py-4 rounded-2xl border-2 border-slate-200 outline-none font-medium h-40 focus:border-[#81adb3] transition-colors"
+            />
+            <div className="flex gap-3 mt-8">
+              <button type="button" onClick={() => setShowBugModal(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 font-black rounded-2xl uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all">Cancel</button>
+              <button type="submit" disabled={!bugText.trim() || isSendingBug} className="flex-1 py-4 bg-[#e7b64f] text-slate-900 font-black rounded-2xl uppercase tracking-widest text-[10px] hover:bg-[#d9a43a] transition-all shadow-lg disabled:opacity-40">
+                {isSendingBug ? 'Sending...' : 'Send'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {showSchoolYearModal && (
         <div className="fixed inset-0 z-[800] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-6 no-print">
           <div className="bg-white p-10 rounded-[3rem] shadow-2xl max-w-lg w-full animate-fade-in border border-slate-100">
             <h3 className="text-2xl font-black text-slate-800 mb-4 tracking-tighter text-center">
               School Year Configuration
             </h3>
-            <p className="text-sm text-slate-500 mb-6 text-center">Set your school year dates to filter vault exports by learning period.</p>
+            <p className="text-sm text-slate-500 mb-6 text-center">These dates are saved for {activeViewingStudent?.name || 'this student'} only. Use them to filter vault exports by learning period.</p>
             
             <div className="space-y-5">
               <div>
@@ -1382,7 +1560,7 @@ export default function App() {
               </div>
             ) : (
               <div className="space-y-4">
-                {learningPeriods.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()).map(lp => {
+                {[...learningPeriods].sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()).map(lp => {
                   const recordCount = getLPRecordCount(lp.id);
                   const isCurrentLP = currentLP?.id === lp.id;
                   const isPast = new Date(lp.endDate).getTime() < new Date().getTime();
@@ -1697,6 +1875,15 @@ export default function App() {
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z"/></svg>
                 <span className="text-[8px] font-black uppercase tracking-widest">Start Here</span>
             </button>
+            {user?.email === ADMIN_EMAIL && (
+              <button
+                onClick={() => { setActiveTab('admin'); setViewingStudentId(null); }}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all duration-300 ${activeTab === 'admin' ? 'text-[#367c92] scale-110' : 'text-slate-500 opacity-60'}`}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l9 6 9-6M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z"/></svg>
+                <span className="text-[8px] font-black uppercase tracking-widest">Admin</span>
+              </button>
+            )}
         </div>
       </div>
 
@@ -1727,6 +1914,12 @@ export default function App() {
                  setActiveTab('features'); 
                  setViewingStudentId(null);
                }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'features' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Start Here</button>
+               {user?.email === ADMIN_EMAIL && (
+                 <button onClick={() => {
+                   setActiveTab('admin');
+                   setViewingStudentId(null);
+                 }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'admin' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Admin</button>
+               )}
             </nav>
             <button onClick={async () => {
               await authService.logout();
@@ -1948,6 +2141,12 @@ export default function App() {
                        </div>
                        <div className="flex gap-4">
                          {!viewingStudentId && (
+                           <button onClick={() => handleAddNewStudent()} className="text-[9px] font-black text-white bg-[#e7b64f] uppercase tracking-widest px-4 py-2 rounded-xl hover:bg-[#d9a43a] transition-all shadow-lg no-print flex items-center gap-2">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4"/></svg>
+                              + Add New Student
+                           </button>
+                         )}
+                         {viewingStudentId && (
                            <>
                              <button onClick={() => setShowSchoolYearModal(true)} className="text-[9px] font-black text-slate-600 bg-slate-100 uppercase tracking-widest px-4 py-2 rounded-xl hover:bg-slate-200 transition-all no-print flex items-center gap-2">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -1958,10 +2157,11 @@ export default function App() {
                                 LP Date Ranges
                                 {learningPeriods.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-white/30 rounded text-[8px]">{learningPeriods.length}</span>}
                              </button>
-                             <button onClick={() => handleAddNewStudent()} className="text-[9px] font-black text-white bg-[#e7b64f] uppercase tracking-widest px-4 py-2 rounded-xl hover:bg-[#d9a43a] transition-all shadow-lg no-print flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4"/></svg>
-                                + Add New Student
-                             </button>
+                             {students.length > 1 && (
+                               <button onClick={() => { setCopyTargetIds([]); setShowCopyModal(true); }} className="text-[9px] font-black text-slate-600 bg-slate-100 uppercase tracking-widest px-4 py-2 rounded-xl hover:bg-slate-200 transition-all no-print">
+                                  Copy Calendar to Other Students
+                               </button>
+                             )}
                              <p className="text-[8px] text-slate-400 font-medium mt-1 no-print">*LP = Learning Period</p>
                            </>
                          )}
@@ -1976,6 +2176,13 @@ export default function App() {
                          </button>
                        </div>
                    </div>
+
+                   {viewingStudentId && !schoolYearLabel && !schoolYearStart && !schoolYearEnd && learningPeriods.length === 0 && getBrowserSavedCalendar() && (
+                     <div className="bg-[#fddc96]/40 border border-[#e7b64f]/40 rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
+                       <p className="text-sm text-slate-700 font-medium">We found school year dates saved in this web browser from an earlier version. Use them for {activeViewingStudent?.name}? They will then be saved in your account.</p>
+                       <button onClick={useBrowserCalendarForStudent} className="text-[9px] font-black text-slate-800 bg-[#e7b64f] uppercase tracking-widest px-4 py-3 rounded-xl hover:bg-[#d9a43a] transition-all shrink-0">Use These Dates</button>
+                     </div>
+                   )}
 
                    {!viewingStudentId ? (
                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 no-print">
@@ -2078,6 +2285,50 @@ export default function App() {
                </div>
             )}
 
+            {activeTab === 'admin' && user?.email === ADMIN_EMAIL && (
+              <div className="animate-fade-in space-y-8 max-w-4xl mx-auto">
+                <div className="flex items-end justify-between border-b border-slate-200 pb-6">
+                  <div>
+                    <h2 className="text-4xl font-black text-slate-800 uppercase tracking-tighter leading-none mb-1">Admin</h2>
+                    <p className="text-[#e7b64f] text-xs font-black uppercase tracking-widest">In-App Messages</p>
+                  </div>
+                  <button onClick={loadAdminMessages} className="text-[9px] font-black text-[#81adb3] uppercase tracking-widest border border-[#81adb3]/20 px-4 py-2 rounded-xl hover:bg-[#81adb3]/5 transition-colors">
+                    {isLoadingMessages ? 'Loading...' : 'Refresh'}
+                  </button>
+                </div>
+                <p className="text-sm text-slate-500">Nothing is emailed from the app. Each note below shows the account it came from, so you can email that person yourself.</p>
+                {messagesError && <p className="text-sm font-bold text-red-500">{messagesError}</p>}
+                {!messagesError && !isLoadingMessages && adminMessages.length === 0 && (
+                  <p className="text-sm text-slate-400 font-medium">No messages yet.</p>
+                )}
+                {adminMessages.map(m => (
+                  <div key={m.id} className={`bg-white p-8 rounded-[2rem] shadow-sm border ${m.status === 'new' ? 'border-[#e7b64f]' : 'border-slate-100 opacity-70'}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#367c92]">Bug report • {new Date(m.timestamp).toLocaleString()}</span>
+                      <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${m.status === 'new' ? 'bg-[#fddc96] text-slate-800' : 'bg-slate-100 text-slate-500'}`}>{m.status === 'new' ? 'New' : 'Handled'}</span>
+                    </div>
+                    <p className="text-slate-800 font-medium whitespace-pre-wrap mb-4">{m.message}</p>
+                    <p className="text-xs text-slate-500 mb-1"><span className="font-black uppercase tracking-widest">From:</span> {m.userName} • <a className="text-[#367c92] underline" href={`mailto:${m.userEmail}`}>{m.userEmail}</a> • {m.accountTier} account</p>
+                    <p className="text-xs text-slate-400 mb-4 break-words"><span className="font-black uppercase tracking-widest">Details:</span> screen "{m.page}", app v{m.appVersion}, {m.browser}</p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={async () => { await dbService.setMessageStatus(m.id!, m.status === 'new' ? 'handled' : 'new'); loadAdminMessages(); }}
+                        className="text-[9px] font-black text-slate-600 bg-slate-100 uppercase tracking-widest px-4 py-2 rounded-xl hover:bg-slate-200 transition-all"
+                      >
+                        {m.status === 'new' ? 'Mark Handled' : 'Mark New'}
+                      </button>
+                      <button
+                        onClick={async () => { if (!confirm('Delete this message for good?')) return; await dbService.deleteMessage(m.id!); loadAdminMessages(); }}
+                        className="text-[9px] font-black text-red-400 uppercase tracking-widest px-4 py-2 rounded-xl hover:bg-red-50 transition-all"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {activeTab === 'features' && (
                 <div className="animate-fade-in space-y-12 max-w-4xl mx-auto">
                     <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
@@ -2138,6 +2389,12 @@ export default function App() {
                             <textarea value={featureDesc} onChange={e => setFeatureDesc(e.target.value)} placeholder="Description" className="w-full px-6 py-4 rounded-2xl border border-slate-100 outline-none font-medium h-32" />
                             <button type="submit" disabled={isSubmittingFeature} className="w-full py-4 bg-[#e7b64f] text-white font-black rounded-2xl uppercase tracking-widest text-[10px]">{isSubmittingFeature ? 'Submitting...' : 'Submit'}</button>
                         </form>
+                    </div>
+
+                    <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100 text-center">
+                        <h3 className="text-xl font-black text-slate-800 mb-3 uppercase tracking-tighter">Something Not Working?</h3>
+                        <p className="text-sm text-slate-500 mb-6">Let us know what went wrong and we will look into it.</p>
+                        <button onClick={() => setShowBugModal(true)} className="px-8 py-4 bg-[#e7b64f] text-slate-900 font-black rounded-2xl uppercase tracking-widest text-[10px] hover:bg-[#d9a43a] transition-all">Report a Bug</button>
                     </div>
                 </div>
             )}
