@@ -311,6 +311,14 @@ export default function App() {
     }
   };
 
+  // From inside a student's vault: jump to the Match screen with this student already chosen.
+  const startActivityForStudent = (studentId: string) => {
+    handleStudentSelect(studentId);
+    setActiveTab('search');
+    setViewingStudentId(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const toggleGrade = (grade: string) => {
     setSelectedGrades(prev => {
         if (prev.includes(grade)) return prev.filter(g => g !== grade);
@@ -2166,6 +2174,12 @@ export default function App() {
                            </>
                          )}
                          {viewingStudentId && (
+                            <button onClick={() => startActivityForStudent(viewingStudentId)} className="text-[9px] font-black text-slate-900 bg-[#e7b64f] uppercase tracking-widest px-4 py-2 rounded-xl hover:bg-[#d9a43a] transition-all shadow-lg no-print flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4"/></svg>
+                                Add an Activity
+                            </button>
+                         )}
+                         {viewingStudentId && (
                             <button onClick={() => setShowExportModal(true)} className="text-[9px] font-black text-white bg-[#81adb3] uppercase tracking-widest px-4 py-2 rounded-xl hover:bg-[#6d969c] transition-all shadow-lg no-print flex items-center gap-2">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                 Export Vault
@@ -2276,7 +2290,14 @@ export default function App() {
                                             </div>
                                         );
                                     }) : (
-                                        <div className="text-center py-20 text-slate-300 font-black uppercase tracking-widest text-[10px]">No Student Vault entries found for this Student Profile.</div>
+                                        <div className="text-center py-20 flex flex-col items-center gap-6">
+                                            <p className="text-slate-300 font-black uppercase tracking-widest text-[10px]">No Student Vault entries found for this Student Profile.</p>
+                                            {viewingStudentId && (
+                                              <button onClick={() => startActivityForStudent(viewingStudentId)} className="px-8 py-4 bg-[#e7b64f] text-slate-900 font-black rounded-2xl uppercase tracking-widest text-[10px] hover:bg-[#d9a43a] transition-all shadow-lg no-print">
+                                                  + Add the First Activity
+                                              </button>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                            </div>
