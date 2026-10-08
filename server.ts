@@ -8,7 +8,8 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = parseInt(process.env.PORT || '8080');
 
-app.use(express.json());
+// Large limit so photo uploads (sent as base64) fit in one request.
+app.use(express.json({ limit: '15mb' }));
 
 app.post('/api/create-checkout-session', async (req, res) => {
   const handler = (await import('./api/create-checkout-session.js')).default;
@@ -17,6 +18,11 @@ app.post('/api/create-checkout-session', async (req, res) => {
 
 app.post('/api/verify-checkout-session', async (req, res) => {
   const handler = (await import('./api/verify-checkout-session.js')).default;
+  return handler(req, res);
+});
+
+app.post('/api/gemini', async (req, res) => {
+  const handler = (await import('./api/gemini.js')).default;
   return handler(req, res);
 });
 
