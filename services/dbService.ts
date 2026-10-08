@@ -1,6 +1,6 @@
 import { db } from '../firebase';
 import * as firestore from 'firebase/firestore';
-import { Student, LearningRecord, FeatureRequest } from '../types';
+import { Student, LearningRecord, FeatureRequest, AppMessage } from '../types';
 
 export const dbService = {
   getDailyUsage: async (): Promise<number> => {
@@ -42,6 +42,27 @@ export const dbService = {
   submitFeatureRequest: async (request: FeatureRequest): Promise<string> => {
     const docRef = await firestore.addDoc(firestore.collection(db, 'feature_requests'), request);
     return docRef.id;
+  },
+
+  submitMessage: async (message: Omit<AppMessage, 'id'>): Promise<string> => {
+    const docRef = await firestore.addDoc(firestore.collection(db, 'messages'), message);
+    return docRef.id;
+  },
+
+  // Admin only (the database rules refuse everyone else).
+  getMessages: async (): Promise<AppMessage[]> => {
+    const snap = await firestore.getDocs(firestore.collection(db, 'messages'));
+    return snap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as AppMessage))
+      .sort((a, b) => b.timestamp - a.timestamp);
+  },
+
+  setMessageStatus: async (messageId: string, status: 'new' | 'handled'): Promise<void> => {
+    await firestore.updateDoc(firestore.doc(db, 'messages', messageId), { status });
+  },
+
+  deleteMessage: async (messageId: string): Promise<void> => {
+    await firestore.deleteDoc(firestore.doc(db, 'messages', messageId));
   },
 
   unlockUser: async (userId: string, name: string, code: string): Promise<void> => {

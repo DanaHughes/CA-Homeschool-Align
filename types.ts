@@ -29,11 +29,41 @@ export interface User {
   };
 }
 
+export interface LearningPeriod {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+}
+
 export interface Student {
   id: string;
   userId: string;
   name: string;
   gradeLevel: string;
+  // Calendar settings are saved per student, because some families have
+  // children enrolled at different charters with different calendars.
+  schoolYearLabel?: string;
+  schoolYearStart?: string;
+  schoolYearEnd?: string;
+  learningPeriods?: LearningPeriod[];
+}
+
+// A note sent from inside the app (for example a bug report).
+// Nothing is emailed; the admin reads these in the Admin tab.
+export interface AppMessage {
+  id?: string;
+  type: 'bug';
+  userId: string;
+  userEmail: string;
+  userName: string;
+  accountTier: string;
+  message: string;
+  page: string;
+  appVersion: string;
+  browser: string;
+  timestamp: number;
+  status: 'new' | 'handled';
 }
 
 export interface LearningRecord {
@@ -59,4 +89,4 @@ export interface FeatureRequest {
   timestamp: number;
 }
 
-export type TabView = 'search' | 'students' | 'features';
+export type TabView = 'search' | 'students' | 'features' | 'admin';
