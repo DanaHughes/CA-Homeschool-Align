@@ -74,3 +74,57 @@ export const generateNarrativeSummary = async (records: LearningRecord[], studen
     return 'Progress report generation failed. Please try again later.';
   }
 };
+
+// Same plain-language explanation as explainStandardMatch, for a whole list of standards in one request.
+export const explainStandards = async (standards: Standard[], query: string): Promise<string[]> => {
+  try {
+    const data = await callGemini({
+      action: 'explainMany',
+      descriptions: standards.map(s => s.description),
+      query
+    });
+    const texts: string[] = Array.isArray(data.texts) ? data.texts : [];
+    return standards.map((_, i) => texts[i] || EXPLAIN_FALLBACK);
+  } catch (e) {
+    const msg = String((e as any)?.message || '');
+    if (msg === 'DAILY_LIMIT_REACHED' || msg === 'RATE_LIMITED') throw e;
+    return standards.map(() => EXPLAIN_FALLBACK);
+  }
+};
+
+export interface WorkPageContent {
+  journalPrompt: string;
+  organizerTitle: string;
+  organizerLabels: string[];
+  organizerCenter: string;
+  recommended: 'journal' | 'organizer';
+}
+
+// Plain wording used if the AI cannot write the page text, so a page can always be made.
+export const fallbackWorkPage = (subject: string): WorkPageContent => ({
+  journalPrompt: 'Tell about what you did and what you learned during this activity.',
+  organizerTitle: `Show what you learned about ${subject || 'this activity'}.`,
+  organizerLabels: ['Part 1', 'Part 2', 'Part 3'],
+  organizerCenter: 'My activity',
+  recommended: 'journal'
+});
+
+export const generateWorkPageContent = async (args: {
+  grade: string;
+  subject: string;
+  activity: string;
+  hook: string;
+  standardDescription: string;
+}): Promise<WorkPageContent> => {
+  try {
+    const data = await callGemini({ action: 'workpage', ...args });
+    const c = data.content;
+    if (c && Array.isArray(c.organizerLabels) && c.organizerLabels.length === 3 && c.journalPrompt) {
+      return c as WorkPageContent;
+    }
+  } catch (e) {
+    const msg = String((e as any)?.message || '');
+    if (msg === 'DAILY_LIMIT_REACHED' || msg === 'RATE_LIMITED') throw e;
+  }
+  return fallbackWorkPage(args.subject);
+};

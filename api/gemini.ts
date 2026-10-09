@@ -11,11 +11,12 @@
  * Optional:
  *   FIREBASE_API_KEY - the public Firebase web key, used to check login tokens
  *
- * The client POSTs { action: 'search' | 'explain' | 'narrative', ... } with the
+ * The client POSTs { action: 'search' | 'explain' | 'explainMany' | 'workpage' | 'narrative', ... } with the
  * header "Authorization: Bearer <firebase id token>".
  */
 
 import { GoogleGenAI, Type } from '@google/genai';
+import { writingExpectation } from '../services/gradeExpectations';
 
 const MODEL_NAME = 'gemini-3-flash-preview';
 
@@ -61,6 +62,66 @@ Focus on the 'Learning Journey'.
 
 const EXPLAIN_FALLBACK =
   'During this activity, students can build key academic skills through hands-on learning.';
+
+// Writes the short text printed on a work sample page. It never designs the page itself;
+// the app draws fixed page layouts and this only supplies the words.
+const WORKPAGE_SYSTEM_INSTRUCTION = `
+You write short, friendly text for a printable homeschool work sample page that a child will complete.
+
+RULES:
+1. Follow the family's lead. Use only the activity the family described. NEVER introduce religious, political, or controversial topics, examples, or ideas on your own.
+2. Write for the child's grade: simple words and short sentences for TK and K, and a more grown-up tone for older grades.
+3. NEVER mention sentence counts, paragraph counts, or words like "approaching", "above", "below", or "on grade level".
+4. NEVER mention standards, standard codes, or frameworks.
+5. Speak directly to the child. Return ONLY the JSON requested.
+`;
+
+export const buildExplainPrompt = (query: string, description: string): string => `
+ Activity: "${query}"
+ Standard: ${description}
+  Format: "[Context], students can [Action] by [Method]."
+ No jargon. No codes.`;
+
+async function explainOne(ai: GoogleGenAI, description: string, query: string): Promise<string> {
+  try {
+    const response = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: [{ parts: [{ text: buildExplainPrompt(query, description) }] }],
+      config: { systemInstruction: EXPLAINER_SYSTEM_INSTRUCTION }
+    });
+    return response.text?.trim() || EXPLAIN_FALLBACK;
+  } catch (e) {
+    console.error('[Gemini] explain error:', e);
+    return EXPLAIN_FALLBACK;
+  }
+}
+
+export interface WorkPageContent {
+  journalPrompt: string;
+  organizerTitle: string;
+  organizerLabels: string[];
+  organizerCenter: string;
+  recommended: 'journal' | 'organizer';
+}
+
+// Cleans up whatever the AI returned so the page always gets safe, complete text.
+export function normalizeWorkPage(raw: any): WorkPageContent | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const journalPrompt = str(raw.journalPrompt, 400).trim();
+  const organizerTitle = str(raw.organizerTitle, 400).trim();
+  const organizerCenter = str(raw.organizerCenter, 60).trim();
+  const labels: string[] = Array.isArray(raw.organizerLabels)
+    ? raw.organizerLabels.map((l: unknown) => str(l, 40).trim()).filter(Boolean).slice(0, 3)
+    : [];
+  if (!journalPrompt || !organizerTitle || !organizerCenter || labels.length < 3) return null;
+  return {
+    journalPrompt,
+    organizerTitle,
+    organizerLabels: labels,
+    organizerCenter,
+    recommended: raw.recommended === 'organizer' ? 'organizer' : 'journal'
+  };
+}
 
 // Simple in-memory counters. They reset when the server restarts or scales to a
 // new instance, which is fine as a safety net for a small app.
@@ -198,21 +259,65 @@ export default async function handler(req: any, res: any) {
     if (body.action === 'explain') {
       const description = str(body.standardDescription, 2000);
       const query = str(body.query, 2000);
+      return res.status(200).json({ text: await explainOne(ai, description, query) });
+    }
+
+    // Same explanation as 'explain', for several standards at once (run in parallel).
+    if (body.action === 'explainMany') {
+      const query = str(body.query, 2000);
+      const descriptions: string[] = Array.isArray(body.descriptions)
+        ? body.descriptions.slice(0, 8).map((d: unknown) => str(d, 2000))
+        : [];
+      const texts = await Promise.all(descriptions.map(d => explainOne(ai, d, query)));
+      return res.status(200).json({ texts });
+    }
+
+    if (body.action === 'workpage') {
+      const grade = str(body.grade, 10);
+      const subject = str(body.subject, 40);
+      const activity = str(body.activity, 2000);
+      const hook = str(body.hook, 600);
+      const standardDescription = str(body.standardDescription, 1000);
       const prompt = `
- Activity: "${query}"
- Standard: ${description}
-  Format: "[Context], students can [Action] by [Method]."
- No jargon. No codes.`;
+Grade: ${grade}
+Subject: ${subject}
+Activity the family described: "${activity || 'Photo of the activity'}"
+What the child can show: ${hook}
+Skill behind it: ${standardDescription}
+How much the child will write on this page (use ONLY to pitch the wording; do not repeat it): ${writingExpectation(grade)}
+
+Write the words for two possible page layouts:
+- journalPrompt: ONE instruction or question for a journal page with a picture box and writing lines (for example "Tell about three different layers you noticed during your volcano experiment.").
+- organizerTitle: ONE instruction for a graphic organizer with a picture in the middle and three boxes around it.
+- organizerLabels: exactly 3 short box labels (4 words or fewer each).
+- organizerCenter: a short caption (4 words or fewer) for the picture in the middle.
+- recommended: "organizer" if the skill is about describing parts, steps, sequences, comparing, or sorting; otherwise "journal".`;
       try {
         const response = await ai.models.generateContent({
           model: MODEL_NAME,
           contents: [{ parts: [{ text: prompt }] }],
-          config: { systemInstruction: EXPLAINER_SYSTEM_INSTRUCTION }
+          config: {
+            systemInstruction: WORKPAGE_SYSTEM_INSTRUCTION,
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                journalPrompt: { type: Type.STRING },
+                organizerTitle: { type: Type.STRING },
+                organizerLabels: { type: Type.ARRAY, items: { type: Type.STRING } },
+                organizerCenter: { type: Type.STRING },
+                recommended: { type: Type.STRING }
+              },
+              required: ['journalPrompt', 'organizerTitle', 'organizerLabels', 'organizerCenter', 'recommended']
+            }
+          }
         });
-        return res.status(200).json({ text: response.text?.trim() || EXPLAIN_FALLBACK });
+        const content = normalizeWorkPage(JSON.parse(response.text || '{}'));
+        return res.status(200).json({ content });
       } catch (e) {
-        console.error('[Gemini] explain error:', e);
-        return res.status(200).json({ text: EXPLAIN_FALLBACK });
+        console.error('[Gemini] workpage error:', e);
+        // The browser has its own plain fallback wording when content is null.
+        return res.status(200).json({ content: null });
       }
     }
 
