@@ -49,7 +49,7 @@ Dana is **not a coder**. Make **no assumptions** about what she knows.
 - **Work sample pages: one page for every child, plus a "How to complete this page" guide (Dana, 2026-10-08).** The three "approaching / grade level / above" versions were dropped. The AI writes ONE prompt (no sentence counts in it). A fixed-text guide at the bottom tells each child how much to do. Diagram/organizer pages: "Approaching grade level? Draw a picture in each box to show what you learned. At grade level? Write one sentence in each box to show what you learned. Above grade level? Write three to five sentences in each box to show what you learned." Journal pages show the child's grade as "at grade level", the grade below as "approaching", and the grade above as "above", using Dana's writing expectations:
   - TK/Pre-K: a picture and a few letters or a word.
   - K: 1 complete idea or sentence (often dictated, copied, or phonetic spelling). Focus: legible lowercase letters, spaces between words.
-  - 1st: 3 to 6 sentences. Focus: capital letters, periods, and a conjunction (and, but, because).
+  - 1st: 1 to 6 sentences (Dana's source note: about 1 sentence at the start of the year, growing to 5 to 6 by the end; Dana confirmed the page should say 1 to 6). Focus: capital letters, periods, and a conjunction (and, but, because).
   - 2nd: 5 to 6 sentences in a short paragraph. Focus: who, what, where, when, why; proper nouns.
   - 3rd: 5 to 8 sentences, one paragraph with topic sentence and closing. Focus: linking words, relevant details.
   - 4th: multi-paragraph (introduction, body reasons, conclusion). Focus: two or more reasons, varied transitions.
