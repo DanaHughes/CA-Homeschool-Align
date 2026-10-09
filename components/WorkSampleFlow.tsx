@@ -14,6 +14,7 @@ import {
   needsContinuationPage
 } from '../services/gradeExpectations';
 import { shrinkImage } from '../services/imageUtils';
+import { buildWorkSamplePdf, downloadBlob, openMailDraft, safeFileName, shareFile } from '../services/pdfExport';
 import {
   lpForDate,
   todayIso,
@@ -261,6 +262,8 @@ export const WorkSampleFlow: React.FC<Props> = ({
   const [thick, setThick] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState<'' | 'download' | 'share'>('');
+  const [exportMsg, setExportMsg] = useState('');
 
   const fileRef = useRef<HTMLInputElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
@@ -420,6 +423,52 @@ export const WorkSampleFlow: React.FC<Props> = ({
     const ok = await onSaveRecord({ standard: chosen.standard, studentId, activityText: activity, matchLogic: chosen.hook });
     setSaving(false);
     if (ok) setSaved(true);
+  };
+
+  // ----- PDF download and email -----
+  const pdfName = () => safeFileName([fields.name || 'Work Sample', fields.subject, fields.lp, fields.date]) + '.pdf';
+
+  const handleDownloadPdf = async () => {
+    if (!printRef.current) return;
+    setExporting('download');
+    setExportMsg('');
+    try {
+      const blob = await buildWorkSamplePdf(printRef.current);
+      downloadBlob(blob, pdfName());
+      setExportMsg('Your PDF was saved to this device.');
+    } catch (e) {
+      console.error('PDF error:', e);
+      setExportMsg('Sorry, the PDF could not be made. Please try "Print or save as PDF" instead.');
+    } finally {
+      setExporting('');
+    }
+  };
+
+  const handleShare = async () => {
+    if (!printRef.current) return;
+    setExporting('share');
+    setExportMsg('');
+    try {
+      const blob = await buildWorkSamplePdf(printRef.current);
+      const name = pdfName();
+      const file = new File([blob], name, { type: 'application/pdf' });
+      const subject = `Work sample: ${[fields.name, fields.subject, fields.lp].filter(Boolean).join(', ')}`;
+      const body = `Hello,\n\nAttached is ${fields.name || 'my child'}'s ${fields.subject || ''} work sample${fields.lp ? ` for ${fields.lp}` : ''}.\nStandard: ${fields.standards}\n\nThank you!`;
+      const result = await shareFile(file, subject, body);
+      if (result === 'shared') setExportMsg('');
+      else if (result === 'cancelled') setExportMsg('');
+      else {
+        // This device cannot attach files by itself: save the PDF and open a blank email.
+        downloadBlob(blob, name);
+        openMailDraft(subject, body + '\n\n(Please attach the PDF that was just saved to this device.)');
+        setExportMsg('Your PDF was saved to this device. In the email that opened, tap the paperclip or "Attach" and choose that file.');
+      }
+    } catch (e) {
+      console.error('Share error:', e);
+      setExportMsg('Sorry, the PDF could not be made. Please try "Print or save as PDF" instead.');
+    } finally {
+      setExporting('');
+    }
   };
 
   const young = isYoungGrade(fields.grade);
@@ -782,7 +831,9 @@ export const WorkSampleFlow: React.FC<Props> = ({
           </div>
 
           <div className="no-print flex flex-wrap justify-center gap-3 mt-8">
-            <button type="button" onClick={() => printRef.current && printElement(printRef.current)} className="px-8 py-4 bg-[#81adb3] text-slate-900 font-black rounded-2xl uppercase tracking-widest text-[11px] hover:bg-[#6d969c] transition-all shadow-lg">Print or save as PDF</button>
+            <button type="button" disabled={!!exporting} onClick={handleShare} className="px-8 py-4 bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-900 font-black rounded-2xl uppercase tracking-widest text-[11px] hover:shadow-xl transition-all shadow-lg disabled:opacity-60">{exporting === 'share' ? 'Getting your PDF ready…' : 'Email or share'}</button>
+            <button type="button" disabled={!!exporting} onClick={handleDownloadPdf} className="px-8 py-4 bg-[#81adb3] text-slate-900 font-black rounded-2xl uppercase tracking-widest text-[11px] hover:bg-[#6d969c] transition-all shadow-lg disabled:opacity-60">{exporting === 'download' ? 'Making your PDF…' : 'Download PDF'}</button>
+            <button type="button" disabled={!!exporting} onClick={() => printRef.current && printElement(printRef.current)} className="px-8 py-4 border-2 border-slate-200 text-slate-600 font-black rounded-2xl uppercase tracking-widest text-[11px] hover:border-[#81adb3] transition-all">Print</button>
             {studentId ? (
               <button type="button" disabled={saving || saved} onClick={handleSave} className="px-8 py-4 bg-[#e7b64f] text-slate-900 font-black rounded-2xl uppercase tracking-widest text-[11px] hover:bg-[#d9a43a] transition-all shadow-lg disabled:opacity-60">
                 {saved ? `Saved to ${student?.name}'s Vault ✓` : saving ? 'Saving…' : 'Save to Student Vault'}
@@ -792,6 +843,7 @@ export const WorkSampleFlow: React.FC<Props> = ({
             )}
             <button type="button" onClick={() => { setStep(1); setQuery(''); setPhoto(null); setOptions([]); }} className="px-8 py-4 border-2 border-slate-200 text-slate-500 font-black rounded-2xl uppercase tracking-widest text-[11px] hover:border-[#81adb3] transition-all">Start a new work sample</button>
           </div>
+          {exportMsg && <p className="no-print text-center text-sm font-bold text-[#367c92] mt-4" role="status">{exportMsg}</p>}
           <p className="no-print text-center text-xs text-slate-400 mt-4"><span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 4, background: '#fddc96', verticalAlign: '-2px', marginRight: 6 }} />Gold highlight = filled in for you. Change anything before printing.</p>
         </section>
       )}
