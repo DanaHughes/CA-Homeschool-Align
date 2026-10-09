@@ -3,7 +3,8 @@
 // They never use level words such as "approaching", "above" or "on grade level".
 // The server also reads them to pitch the writing prompt at the right grade.
 
-export const GRADE_CHOICES = ['TK', 'K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+// The app serves TK to 8th grade only (Dana, 2026-10-09). Do not add grades 9 to 12.
+export const GRADE_CHOICES = ['TK', 'K', '1', '2', '3', '4', '5', '6', '7', '8'];
 
 const WRITING: Record<string, string> = {
   TK: 'Draw a picture. Write a few letters or a word.',
@@ -18,7 +19,7 @@ const WRITING: Record<string, string> = {
   '8': 'Write a full 5-paragraph response or longer with a cohesive argument, transitions and sources.'
 };
 
-// Grades 9 to 12 were not in Dana's list, so they use the grade 8 line until she says otherwise.
+// Only for students saved earlier with a grade outside TK to 8: they use the grade 8 line.
 export const writingExpectation = (grade: string): string => WRITING[grade] || WRITING['8'];
 
 export const isYoungGrade = (grade: string): boolean => ['TK', 'K', '1', '2'].includes(grade);

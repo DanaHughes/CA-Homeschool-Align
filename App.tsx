@@ -8,6 +8,7 @@ import { StandardCard } from './components/StandardCard';
 import { AccessGate } from './components/AccessGate';
 import { AuthGate } from './components/AuthGate';
 import { WorkSampleFlow } from './components/WorkSampleFlow';
+import { InstallPrompt, InstallDirections } from './components/InstallPrompt';
 
 const FREE_SEARCH_LIMIT = 25;
 const PRO_FREE_EMAILS = ['demo@cahomeschool.com', 'dana2andrea@gmail.com'];
@@ -141,7 +142,7 @@ export default function App() {
   
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  const ALL_GRADES = ['TK', 'K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+  const ALL_GRADES = ['TK', 'K', '1', '2', '3', '4', '5', '6', '7', '8'];
 
   useEffect(() => {
     const lastVersion = localStorage.getItem('app_version');
@@ -1702,7 +1703,8 @@ export default function App() {
                   onChange={(e) => setStudentModalGrade(e.target.value)}
                   className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 outline-none font-medium text-slate-800 focus:border-[#81adb3] transition-colors cursor-pointer bg-white"
                 >
-                  {ALL_GRADES.map(grade => (
+                  {/* A student saved earlier with a grade outside TK to 8 keeps that grade when edited. */}
+                  {(ALL_GRADES.includes(studentModalGrade) ? ALL_GRADES : [...ALL_GRADES, studentModalGrade]).map(grade => (
                     <option key={grade} value={grade}>Grade {grade}</option>
                   ))}
                 </select>
@@ -1971,6 +1973,8 @@ export default function App() {
             }} className="text-[8px] font-black text-slate-300 uppercase tracking-widest hover:text-red-400 transition-colors">Logout</button>
         </div>
       </header>
+
+      {user && <InstallPrompt />}
 
       <main className="flex-grow max-w-7xl mx-auto px-6 py-12 w-full z-10 mb-20">
             {activeTab === 'search' && user && (
@@ -2261,6 +2265,8 @@ export default function App() {
                             </div>
                         </div>
                     </div>
+
+                    <InstallDirections />
 
                     <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
                         <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-3 uppercase tracking-tighter">Request a Feature</h3>
