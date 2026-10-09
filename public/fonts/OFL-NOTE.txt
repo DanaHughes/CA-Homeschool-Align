@@ -1,0 +1,2 @@
+Lora and Cormorant Garamond are open fonts licensed under the SIL Open Font License 1.1 (https://openfontlicense.org).
+These files are trimmed copies (Latin letters and common punctuation) used only to make the branded PDF files.

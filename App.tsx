@@ -9,6 +9,8 @@ import { AccessGate } from './components/AccessGate';
 import { AuthGate } from './components/AuthGate';
 import { WorkSampleFlow } from './components/WorkSampleFlow';
 import { InstallPrompt, InstallDirections } from './components/InstallPrompt';
+import { buildVaultPdf } from './services/vaultPdf';
+import { downloadBlob } from './services/pdfExport';
 
 const FREE_SEARCH_LIMIT = 25;
 const PRO_FREE_EMAILS = ['demo@cahomeschool.com', 'dana2andrea@gmail.com'];
@@ -966,157 +968,38 @@ export default function App() {
     document.body.removeChild(link);
   };
 
-  // PHASE 2: REAL PDF EXPORT - Matching app design
-  const handleDownloadPDF = () => {
+  // Branded PDF of the student's Vault (see services/vaultPdf.ts)
+  const handleDownloadPDF = async () => {
     if (!filteredRecords.length || !viewingStudentId) return;
-    
+
     const student = students.find(s => s.id === viewingStudentId);
     if (!student) return;
 
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
-    const contentWidth = pageWidth - (margin * 2);
-    let yPosition = margin;
-
-    // Header - matching app style
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.text("HOMESCHOOL WORK SAMPLE PRO", pageWidth / 2, yPosition, { align: "center" });
-    yPosition += 10;
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 100, 100);
-    doc.text("Private Student Vault Export", pageWidth / 2, yPosition, { align: "center" });
-    yPosition += 6;
-    doc.text("CONFIDENTIAL - For Parent Use Only", pageWidth / 2, yPosition, { align: "center" });
-    yPosition += 14;
-
-    // Student info - bold and clear
-    doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text(`Student: ${student.name}`, margin, yPosition);
-    yPosition += 8;
-    
-    doc.setFontSize(12);
-    doc.text(`Grade: ${student.gradeLevel}`, margin, yPosition);
-    yPosition += 8;
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(80, 80, 80);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, margin, yPosition);
-    yPosition += 12;
-
-    // Date filter info
-    if (pdfIncludeDateWindow && (selectedLPForExport || schoolYearFilter !== 'All' || startDateFilter || endDateFilter)) {
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "italic");
-      doc.setTextColor(120, 120, 120);
-      let filterText = "Date Filter: ";
+    const parts: string[] = [];
+    if (pdfIncludeDateWindow) {
       if (selectedLPForExport) {
         const lp = learningPeriods.find(p => p.id === selectedLPForExport);
-        if (lp) filterText += `Learning Period: ${lp.name}`;
+        if (lp) parts.push(`Learning Period: ${lp.name}`);
       } else if (schoolYearFilter !== 'All') {
-        filterText += `School Year ${schoolYearFilter}`;
+        parts.push(`School Year ${schoolYearFilter}`);
       }
-      if (startDateFilter) filterText += ` | From ${startDateFilter}`;
-      if (endDateFilter) filterText += ` | To ${endDateFilter}`;
-      doc.text(filterText, margin, yPosition);
-      yPosition += 10;
+      if (startDateFilter) parts.push(`From ${startDateFilter}`);
+      if (endDateFilter) parts.push(`To ${endDateFilter}`);
     }
 
-    // Separator line
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 10;
-
-    // Records
-    doc.setFont("helvetica", "normal");
-    filteredRecords.forEach((record, index) => {
-      // Check if we need a new page
-      if (yPosition > pageHeight - 50) {
-        doc.addPage();
-        yPosition = margin;
-      }
-
-      // Date - small and gray
-      doc.setFontSize(8);
-      doc.setTextColor(120, 120, 120);
-      doc.setFont("helvetica", "normal");
-      doc.text(record.activityDate, margin, yPosition);
-      yPosition += 6;
-
-      // Activity description - bold and quoted
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(30, 30, 30);
-      const activityLines = doc.splitTextToSize(`"${record.activityDescription}"`, contentWidth);
-      doc.text(activityLines, margin, yPosition);
-      yPosition += activityLines.length * 5 + 2;
-
-      // Standard code and subject - bold
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0, 0, 0);
-      doc.text(`${record.standardCode} - ${record.standardSubject}`, margin, yPosition);
-      yPosition += 7;
-
-      // Standard description - normal weight
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(40, 40, 40);
-      const descLines = doc.splitTextToSize(record.standardDescription, contentWidth);
-      doc.text(descLines, margin, yPosition);
-      yPosition += descLines.length * 4.5;
-
-      // Match logic (if included) - italic, indented
-      if (pdfIncludeMatchLogic && record.matchLogic) {
-        yPosition += 4;
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "italic");
-        doc.setTextColor(60, 60, 60);
-        const logicLines = doc.splitTextToSize(record.matchLogic, contentWidth - 10);
-        doc.text(logicLines, margin + 5, yPosition);
-        yPosition += logicLines.length * 4.5;
-      }
-
-      yPosition += 10;
-
-      // Separator line between records
-      if (index < filteredRecords.length - 1) {
-        doc.setDrawColor(230, 230, 230);
-        doc.line(margin, yPosition, pageWidth - margin, yPosition);
-        yPosition += 10;
-      }
-    });
-
-    // Footer on last page
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(150, 150, 150);
-    doc.text("Zero-Reporting Guarantee Active • Private Parent Record", pageWidth / 2, pageHeight - 8, { align: "center" });
-
-    // Add copyright to all pages
-    const totalPages = doc.internal.pages.length - 1;
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      doc.setFontSize(6);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(180, 180, 180);
-      doc.text(
-        `© ${new Date().getFullYear()} Homeschool Work Sample Pro | All Rights Reserved`,
-        pageWidth / 2,
-        pageHeight - 3,
-        { align: "center" }
-      );
+    try {
+      const { blob, fileName } = await buildVaultPdf({
+        student,
+        records: filteredRecords,
+        filterText: parts.join('  |  '),
+        includeLogic: pdfIncludeMatchLogic,
+        preparedBy: user?.name || ''
+      });
+      downloadBlob(blob, fileName);
+    } catch (e) {
+      console.error('Vault PDF error:', e);
+      alert('Sorry, the PDF could not be made. Please try again.');
     }
-
-    // Download
-    doc.save(`Student_Vault_${student.name.replace(/\s+/g, '_')}_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`);
   };
 
   const handleSubmitFeature = async (e: React.FormEvent) => {
