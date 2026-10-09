@@ -7,6 +7,7 @@ import { authService } from './services/authService';
 import { StandardCard } from './components/StandardCard';
 import { AccessGate } from './components/AccessGate';
 import { AuthGate } from './components/AuthGate';
+import { WorkSampleFlow } from './components/WorkSampleFlow';
 
 const FREE_SEARCH_LIMIT = 25;
 const PRO_FREE_EMAILS = ['demo@cahomeschool.com', 'dana2andrea@gmail.com'];
@@ -823,6 +824,39 @@ export default function App() {
       alert("Failed to save record. Please try again.");
     } finally {
       setIsSavingRecord(false);
+    }
+  };
+
+  // Used by the Work Sample screens: counts one free-trial use after a successful generate.
+  const countWorkSampleUse = async () => {
+    if (!user) return;
+    const newCount = await dbService.incrementUserSearch(user.id);
+    setUser({ ...user, searchCount: newCount });
+  };
+
+  // Used by the Work Sample screens: saves the text record to the Vault without leaving the page.
+  const saveWorkSampleRecord = async (r: { standard: Standard; studentId: string; activityText: string; matchLogic: string }): Promise<boolean> => {
+    if (!user) return false;
+    try {
+      const recordData = {
+        userId: user.id,
+        studentId: r.studentId,
+        standardCode: r.standard.code,
+        standardDescription: r.standard.description,
+        standardSubject: r.standard.subject,
+        activityDate: new Date().toLocaleDateString(),
+        activityDescription: r.activityText || 'Activity Evidence Logged',
+        timestamp: Date.now(),
+        matchLogic: r.matchLogic,
+        includeLogic: !!r.matchLogic
+      };
+      const id = await dbService.addRecord(recordData);
+      setRecords(prev => [{ id, ...recordData } as LearningRecord, ...prev]);
+      return true;
+    } catch (e) {
+      console.error('Save error:', e);
+      alert('Sorry, this could not be saved to the Vault. Please try again.');
+      return false;
     }
   };
 
@@ -1939,195 +1973,20 @@ export default function App() {
       </header>
 
       <main className="flex-grow max-w-7xl mx-auto px-6 py-12 w-full z-10 mb-20">
-            {activeTab === 'search' && (
-                <div className="animate-fade-in space-y-12 no-print">
-                    <div className="max-w-3xl mx-auto text-center mb-12">
-                        <h2 className="text-5xl font-black text-slate-800 tracking-tighter mb-4 leading-tight">Official <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#81adb3] via-[#e7b64f] to-[#f4989c]">CA Matcher</span></h2>
-                        <p className="text-[#81adb3] font-black text-[11px] uppercase tracking-[0.3em] mb-3">MAKING HOMESCHOOL DOABLE.</p>
-                        <p className="text-slate-400 text-[9px] font-medium uppercase tracking-wider italic">Independent tool. Not affiliated with the State of California or any public education agency.</p>
-                    </div>
-
-                    <div className="max-w-4xl mx-auto space-y-6">
-                        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
-                            <div className="flex-grow flex items-center gap-3 bg-white p-5 rounded-[2rem] border-2 border-slate-100 shadow-md transition-all hover:shadow-xl hover:border-[#81adb3]/30 relative">
-                                {/* Step 1 badge - research-backed: circles processed 20% faster than squares (MIT) */}
-                                <div className="absolute -top-3 -left-3 w-7 h-7 bg-gradient-to-br from-[#81adb3] to-[#6d969c] rounded-full flex items-center justify-center shadow-lg ring-2 ring-white">
-                                    <span className="text-white font-black text-xs">1</span>
-                                </div>
-                                <div className="w-12 h-12 bg-[#81adb3]/10 rounded-full flex items-center justify-center text-[#81adb3] flex-shrink-0"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg></div>
-                                <div className="flex-grow">
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Target Student</p>
-                                    <select 
-                                        value={selectedStudentId} 
-                                        onChange={(e) => handleStudentSelect(e.target.value)} 
-                                        className="w-full bg-transparent text-slate-800 font-black text-base outline-none cursor-pointer"
-                                    >
-                                        <option value="">Search Only (Select Grades Below)</option>
-                                        {students.map(s => <option key={s.id} value={s.id}>{s.name} (Grade {s.gradeLevel})</option>)}
-                                        <option value="ADD_NEW" className="text-[#81adb3]">+ Add to Student Vault</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <div className="md:w-72 flex items-center gap-3 bg-white p-5 rounded-[2rem] border-2 border-slate-100 shadow-md transition-all hover:shadow-xl hover:border-[#e7b64f]/30 relative">
-                                {/* Step 2 badge - progressive color gradient guides eye movement (Stanford HCI) */}
-                                <div className="absolute -top-3 -left-3 w-7 h-7 bg-gradient-to-br from-[#c9a850] to-[#e7b64f] rounded-full flex items-center justify-center shadow-lg ring-2 ring-white">
-                                    <span className="text-white font-black text-xs">2</span>
-                                </div>
-                                <div className="w-12 h-12 bg-[#e7b64f]/10 rounded-full flex items-center justify-center text-[#e7b64f] flex-shrink-0"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg></div>
-                                <div className="flex-grow">
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Subject Focus</p>
-                                    <select value={subjectFilter} onChange={e => setSubjectFilter(e.target.value)} className="w-full bg-transparent text-slate-800 font-black text-base outline-none cursor-pointer">
-                                        {['All', 'ELA', 'Math', 'Science', 'History'].map(s => <option key={s} value={s}>{s} Framework</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        {selectedStudentId && (
-                           <div className="flex items-center gap-4 bg-white p-5 rounded-2xl border-2 border-slate-200 animate-fade-in shadow-md">
-                              <label className="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" checked={onlyUnmetStandards} onChange={(e) => setOnlyUnmetStandards(e.target.checked)} className="sr-only peer" />
-                                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#81adb3]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-400 after:border-2 after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-md peer-checked:bg-[#81adb3] peer-checked:border-[#81adb3] border-2 border-slate-400"></div>
-                              </label>
-                              <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Only Unmet Standards</span>
-                                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Excludes standards already in {students.find(s => s.id === selectedStudentId)?.name}'s Vault for this year.</span>
-                              </div>
-                           </div>
-                        )}
-
-                        <div className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-lg relative">
-                            {/* Step 3 badge - numbered steps reduce errors by 47% (Microsoft Design Research) */}
-                            <div className="absolute -top-3 -left-3 w-7 h-7 bg-gradient-to-br from-[#e7a070] to-[#f4989c] rounded-full flex items-center justify-center shadow-lg ring-2 ring-white">
-                                <span className="text-white font-black text-xs">3</span>
-                            </div>
-                            <div className="flex justify-between items-center mb-3 px-2">
-                                <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Select up to 3 grade levels</p>
-                                <span className="text-[11px] font-black text-[#81adb3] uppercase tracking-widest">{selectedGrades.length}/3 Selected</span>
-                            </div>
-                            <p className="text-[9px] text-slate-500 font-medium leading-relaxed mb-5 px-2">
-                                Selecting multiple grades accommodates "family-style" homeschooling where siblings participate in the same lesson. 
-                                <span className="font-black text-slate-600"> Important:</span> Each student must be saved to standards within their legal grade level for charter compliance.
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                                {ALL_GRADES.map(grade => {
-                                    const isSelected = selectedGrades.includes(grade);
-                                    return (
-                                        <button
-                                            key={grade}
-                                            onClick={() => toggleGrade(grade)}
-                                            className={`px-6 py-3 rounded-2xl text-xs font-black transition-all transform active:scale-95 border-2 ${
-                                                isSelected 
-                                                ? 'bg-slate-800 border-slate-800 text-white shadow-lg scale-105' 
-                                                : 'bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600 hover:bg-white'
-                                            }`}
-                                        >
-                                            {grade}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        <div className="bg-white p-4 rounded-[3rem] shadow-2xl border-2 border-slate-200 relative ring-4 ring-[#e7b64f]/10">
-                            {/* Step 4 badge - final step gets coral (warmest color = action, backed by color psychology research) */}
-                            <div className="absolute -top-3 -left-3 w-8 h-8 bg-gradient-to-br from-[#f4989c] to-[#e77b7f] rounded-full flex items-center justify-center shadow-xl ring-2 ring-white animate-pulse">
-                                <span className="text-white font-black text-sm">4</span>
-                            </div>
-                            {selectedImage && (
-                              <div className="absolute -top-20 left-6 animate-fade-in z-20">
-                                <div className="relative group">
-                                  <div className="p-2 bg-white shadow-2xl rounded-xl rotate-[-4deg] border border-slate-100 flex items-center justify-center">
-                                    <img src={selectedImage} className="w-20 h-20 object-cover rounded-lg" alt="Selected evidence" />
-                                  </div>
-                                  <button onClick={() => setSelectedImage(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg hover:scale-110 transition-transform">
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-
-                            <div className="flex flex-col md:flex-row gap-4 items-center">
-                                <div className="flex-grow flex items-center gap-5 px-6 py-6 group">
-                                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-                                  <button onClick={() => fileInputRef.current?.click()} className={`transition-all p-3 rounded-full hover:bg-slate-50 ${selectedImage ? 'text-[#81adb3] bg-[#81adb3]/10' : 'text-slate-300 hover:text-[#81adb3]'}`}>
-                                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                                  </button>
-                                  <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} className="w-full bg-transparent outline-none placeholder:text-slate-300 font-semibold text-xl text-slate-700" placeholder="Describe your activity or upload a photo..." />
-                                </div>
-                                <button onClick={handleSearch} disabled={isSearching} className="w-full md:w-auto px-12 py-6 bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-white font-black rounded-[2.5rem] hover:shadow-2xl hover:scale-105 transition-all disabled:opacity-50 min-w-[200px] shadow-xl text-sm uppercase tracking-widest">
-                                    {isSearching ? 'Searching...' : 'Match Standards'}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Security reassurance - moved below the tool */}
-                        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                            <div className="bg-emerald-50/30 border border-emerald-100/30 p-5 rounded-[2rem] flex items-center gap-4 group hover:bg-emerald-50/50 hover:border-emerald-100/50 transition-all">
-                                <div className="w-10 h-10 bg-white/80 rounded-xl shadow-sm flex items-center justify-center text-emerald-600">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                                </div>
-                                <div>
-                                    <h4 className="text-[9px] font-black text-slate-700 uppercase tracking-widest mb-0.5">Vault Sovereignty</h4>
-                                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider leading-relaxed">Private. Parent-eyes only.</p>
-                                </div>
-                            </div>
-                            <div className="bg-[#81adb3]/5 border border-[#81adb3]/10 p-5 rounded-[2rem] flex items-center gap-4 group hover:bg-[#81adb3]/10 hover:border-[#81adb3]/20 transition-all">
-                                <div className="w-10 h-10 bg-white/80 rounded-xl shadow-sm flex items-center justify-center text-[#81adb3]">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                                </div>
-                                <div>
-                                    <h4 className="text-[9px] font-black text-slate-700 uppercase tracking-widest mb-0.5">Secure Silo</h4>
-                                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider leading-relaxed">Encrypted account storage.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div ref={resultsRef} className="scroll-mt-32 min-h-[400px]">
-                        {isSearching ? (
-                            <ThinkingState />
-                        ) : searchResults.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
-                                {searchResults.map(std => (
-                                    <StandardCard 
-                                        key={std.code} 
-                                        standard={std} 
-                                        isPro={hasProAccess} 
-                                        searchQuery={lastSearchDescription || query || (selectedImage ? "the provided evidence" : "this activity")}
-                                        onSelect={(s) => handleSaveToRecord(s)} 
-                                        onUpgradeRequest={() => setShowPaywall(true)} 
-                                    />
-                                ))}
-                            </div>
-                        ) : hasSearched ? (
-                            <div className="text-center py-20 px-6 flex flex-col items-center animate-fade-in max-w-2xl mx-auto">
-                                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-6">
-                                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                                    </svg>
-                                </div>
-                                <p className="text-slate-800 font-black uppercase tracking-widest text-[11px] mb-3">No Match Found</p>
-                                <p className="text-slate-500 text-sm font-medium leading-relaxed mb-6 text-center">
-                                    We couldn't find a CA standard match for this activity. Try adjusting your description or selecting different grade levels—all learning is valuable, even when frameworks don't capture it perfectly.
-                                </p>
-                                <button 
-                                    onClick={() => { setHasSearched(false); setQuery(''); setSelectedImage(null); }} 
-                                    className="px-6 py-3 bg-[#81adb3] text-white font-black rounded-2xl text-[10px] uppercase tracking-widest hover:bg-[#6d969c] transition-all shadow-lg"
-                                >
-                                    Clear & Try Again
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="text-center py-20 text-slate-300 font-black uppercase tracking-[0.2em] text-[10px]">
-                                <p>Describe lesson or upload evidence to find framework alignments.</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
+            {activeTab === 'search' && user && (
+              <WorkSampleFlow
+                user={user}
+                students={students}
+                records={records}
+                isPro={!!isPro}
+                freeLimit={FREE_SEARCH_LIMIT}
+                onNeedPaywall={() => setShowPaywall(true)}
+                onSearchUsed={countWorkSampleUse}
+                onAddStudent={() => { handleAddNewStudent(); }}
+                onSaveRecord={saveWorkSampleRecord}
+              />
             )}
-            
+
             {activeTab === 'students' && (
                <div className="animate-fade-in space-y-12">
                    <div className="flex flex-col md:flex-row justify-between items-end border-b border-slate-200 pb-8 no-print gap-4">
