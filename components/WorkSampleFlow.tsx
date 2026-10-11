@@ -652,6 +652,11 @@ export const WorkSampleFlow: React.FC<Props> = ({
         </h2>
         <p className="text-[#81adb3] font-black text-[11px] uppercase tracking-[0.3em] mb-3">MAKING HOMESCHOOL DOABLE.</p>
         <p className="text-slate-400 text-[9px] font-medium uppercase tracking-wider italic">Independent tool. Not affiliated with the State of California or any public education agency.</p>
+        <p className="text-slate-400 text-[9px] font-medium uppercase tracking-wider italic mt-1 no-print">
+          <a href="https://www.charterhomeschoolhelp.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#367c92] hover:underline">
+            © {new Date().getFullYear()} Charter Homeschool Help | All rights reserved
+          </a>
+        </p>
       </div>
 
       <div className="flex flex-wrap gap-3 justify-center no-print" aria-label="Progress">
