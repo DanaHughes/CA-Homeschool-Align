@@ -4,8 +4,8 @@
  *
  * Required environment variables:
  *   STRIPE_SECRET_KEY        - Secret key from the Stripe dashboard
- *   STRIPE_PRICE_ID_MONTHLY  - Price ID for the monthly plan (price_1UABjoKF7WRtuq4NMUlNRDJ3)
- *   STRIPE_PRICE_ID_ANNUAL   - Price ID for the annual plan  (price_1UABirKF7WRtuq4NPWy8vEBv)
+ *   STRIPE_PRICE_ID_MONTHLY  - Price ID for the monthly plan ($9 per month)
+ *   STRIPE_PRICE_ID_ANNUAL   - Price ID for the annual plan ($79 per year)
  *
  * The client POSTs { userId, userEmail, userName, plan } and receives { url }
  */
