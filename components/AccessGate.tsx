@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { MONTHLY_PRICE, YEARLY_PRICE, YEARLY_SAVE_PERCENT } from '../services/plans';
+import { RedeemCode } from './RedeemCode';
 import { DEFAULT_PAYWALL_TEXT, PaywallText, trialSentence } from '../services/paywallText';
 
 interface AccessGateUser {
@@ -21,6 +22,8 @@ interface AccessGateProps {
   text?: PaywallText;
   // Admin preview: shows the screen but cannot start a payment.
   previewMode?: boolean;
+  // Called when a family's promo code works (the date their free access lasts until).
+  onCodeRedeemed?: (proUntil: number) => void;
 }
 
 const LogoIcon = ({ className = "w-16 h-16" }) => (
@@ -31,7 +34,7 @@ const LogoIcon = ({ className = "w-16 h-16" }) => (
   </div>
 );
 
-export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel, trialRemaining = 0, trialDaysLeft = 7, text = DEFAULT_PAYWALL_TEXT, previewMode = false }) => {
+export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel, trialRemaining = 0, trialDaysLeft = 7, text = DEFAULT_PAYWALL_TEXT, previewMode = false, onCodeRedeemed }) => {
   const [userName, setUserName] = useState(user?.name || '');
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -182,6 +185,12 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               {error}
             </div>
+        )}
+
+        {onCodeRedeemed && !previewMode && (
+          <div className="mt-8">
+            <RedeemCode onRedeemed={onCodeRedeemed} />
+          </div>
         )}
 
         <div className="mt-10 pt-8 border-t border-slate-50 text-center">

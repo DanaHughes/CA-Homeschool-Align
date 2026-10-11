@@ -18,6 +18,8 @@ export interface User {
   isPaid: boolean;
   paidAt?: number;
   accessCodeUsed?: string;
+  // Free Pro access from a promo code lasts until this time (milliseconds). Set only by the server.
+  proUntil?: number;
   searchCount: number;
   accountTier: 'free' | 'pro';
   subscriptionPlan: SubscriptionPlan;

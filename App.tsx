@@ -11,6 +11,8 @@ import { WorkSampleFlow } from './components/WorkSampleFlow';
 import { PlanPage } from './components/PlanPage';
 import { PlanCards } from './components/PlanCards';
 import { AdminPaywallEditor } from './components/AdminPaywallEditor';
+import { AdminCodes } from './components/AdminCodes';
+import { hasCodeAccess } from './services/accessHelpers';
 import { VerifyEmailBanner } from './components/VerifyEmailBanner';
 import { TrialStatus, computeTrial, loadTrialStatus, trialSummary } from './services/trialService';
 import { DEFAULT_PAYWALL_TEXT, PaywallText, mergePaywallText } from './services/paywallText';
@@ -98,7 +100,7 @@ export default function App() {
   const [trial, setTrial] = useState<TrialStatus>(() => computeTrial(null, {}, Date.now()));
   const [emailVerified, setEmailVerified] = useState(true);
   const [paywallText, setPaywallText] = useState<PaywallText>(DEFAULT_PAYWALL_TEXT);
-  const [adminSection, setAdminSection] = useState<'messages' | 'payment'>('messages');
+  const [adminSection, setAdminSection] = useState<'messages' | 'payment' | 'codes'>('messages');
   const [paywallDraft, setPaywallDraft] = useState<PaywallText | null>(null);
   const [paywallPreview, setPaywallPreview] = useState<{ text: PaywallText; trialRemaining: number; trialDaysLeft: number } | null>(null);
   const [pendingStandardToSave, setPendingStandardToSave] = useState<Standard | null>(null);
@@ -209,7 +211,7 @@ export default function App() {
     }
     if (!user || !sessionStorage.getItem('open_upgrade')) return;
     sessionStorage.removeItem('open_upgrade');
-    const alreadyPro = user.isPaid || PRO_FREE_EMAILS.includes(user.email.toLowerCase());
+    const alreadyPro = user.isPaid || hasCodeAccess(user) || PRO_FREE_EMAILS.includes(user.email.toLowerCase());
     if (alreadyPro) setActiveTab('plan');
     else setShowPaywall(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -764,7 +766,7 @@ export default function App() {
         return;
     }
 
-    const isPro = user.isPaid || PRO_FREE_EMAILS.includes(user.email.toLowerCase());
+    const isPro = user.isPaid || hasCodeAccess(user) || PRO_FREE_EMAILS.includes(user.email.toLowerCase());
     if (!isPro && trial.over) { 
       setShowPaywall(true); 
       return; 
@@ -830,6 +832,7 @@ export default function App() {
     // ISSUE #2 FIX: Rename to canIncludeMatchLogic for clarity
     const canIncludeMatchLogic =
       user.isPaid ||
+      hasCodeAccess(user) ||
       PRO_FREE_EMAILS.includes(user.email.toLowerCase()) ||
       !trial.over;
 
@@ -1095,7 +1098,11 @@ export default function App() {
   };
 
   const activeViewingStudent = students.find(s => s.id === viewingStudentId);
-  const isPro = user?.isPaid || (user && PRO_FREE_EMAILS.includes(user.email.toLowerCase()));
+  const isPro = user?.isPaid || hasCodeAccess(user) || (user && PRO_FREE_EMAILS.includes(user.email.toLowerCase()));
+  const handleCodeRedeemed = (proUntil: number) => {
+    setUser(u => (u ? { ...u, proUntil } : u));
+    setShowPaywall(false);
+  };
   const hasProAccess = isPro || !trial.over;
   const trialRemaining = trial.over ? 0 : trial.remaining;
   const isComplimentary = !!user && PRO_FREE_EMAILS.includes(user.email.toLowerCase());
@@ -1118,6 +1125,7 @@ export default function App() {
     text={paywallText}
     trialRemaining={trialRemaining}
     trialDaysLeft={trial.daysLeft}
+    onCodeRedeemed={handleCodeRedeemed}
     onCancel={() => setShowPaywall(false)}
   />;
 
@@ -1971,6 +1979,7 @@ export default function App() {
                 isComplimentary={isComplimentary}
                 trial={trial}
                 onUpgrade={() => setShowPaywall(true)}
+                onCodeRedeemed={handleCodeRedeemed}
               />
             )}
 
@@ -2171,7 +2180,7 @@ export default function App() {
                 <div className="flex items-end justify-between border-b border-slate-200 pb-6">
                   <div>
                     <h2 className="text-4xl font-black text-slate-800 uppercase tracking-tighter leading-none mb-1">Admin</h2>
-                    <p className="text-[#e7b64f] text-xs font-black uppercase tracking-widest">{adminSection === 'messages' ? 'In-App Messages' : 'Payment Screen Words'}</p>
+                    <p className="text-[#e7b64f] text-xs font-black uppercase tracking-widest">{adminSection === 'messages' ? 'In-App Messages' : adminSection === 'codes' ? 'Promo Codes' : 'Payment Screen Words'}</p>
                   </div>
                   {adminSection === 'messages' && <button onClick={loadAdminMessages} className="text-[9px] font-black text-[#81adb3] uppercase tracking-widest border border-[#81adb3]/20 px-4 py-2 rounded-xl hover:bg-[#81adb3]/5 transition-colors">
                     {isLoadingMessages ? 'Loading...' : 'Refresh'}
@@ -2180,7 +2189,9 @@ export default function App() {
                 <div className="flex gap-3 no-print">
                   <button onClick={() => setAdminSection('messages')} className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${adminSection === 'messages' ? 'bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Messages</button>
                   <button onClick={() => setAdminSection('payment')} className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${adminSection === 'payment' ? 'bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Payment screen</button>
+                  <button onClick={() => setAdminSection('codes')} className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${adminSection === 'codes' ? 'bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Codes</button>
                 </div>
+                {adminSection === 'codes' && <AdminCodes />}
                 {adminSection === 'payment' && (
                   <AdminPaywallEditor
                     draft={paywallDraft ?? paywallText}
