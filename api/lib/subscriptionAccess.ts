@@ -102,6 +102,12 @@ export const verifySignInToken = async (idToken: string): Promise<string> => {
   return decoded.uid;
 };
 
+// Same check, but returns the person's id AND email (used for the admin-only code tools).
+export const verifySignInTokenWithEmail = async (idToken: string): Promise<{ uid: string; email: string }> => {
+  const decoded = await getAuth(getAdminApp()).verifyIdToken(idToken);
+  return { uid: decoded.uid, email: String(decoded.email || '').toLowerCase() };
+};
+
 // The Stripe customer record saved on the person's account when they paid (empty if none).
 export const getStripeCustomerId = async (userId: string): Promise<string> => {
   const snap = await getDb().collection('users').doc(userId).get();
