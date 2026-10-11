@@ -1,7 +1,7 @@
 {
   "name": "Homeschool Work Sample Pro",
   "short_name": "Work Sample Pro",
-  "description": "Create printable work samples that match your child's activities to California standards.",
+  "description": "Turn real life learning activities into charter-ready work samples your child can complete, print, and send to their charter teacher.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",

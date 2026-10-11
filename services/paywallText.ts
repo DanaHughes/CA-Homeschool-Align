@@ -15,7 +15,7 @@ export interface PaywallText {
 export const DEFAULT_PAYWALL_TEXT: PaywallText = {
   heading: 'Unlock Beta License',
   productName: 'Premium License',
-  features: 'Work Sample Creation • Standards Matching • Student Vault • Branded PDF Records',
+  features: 'Instant Work Samples • Printable or Annotatable Pages • Student Vault • Branded PDF Records',
   subtitleTrial: 'You have {number} free generations available for the next {days} days. Upgrade any time to keep going.',
   subtitleUsedUp:
     'Your free trial has ended. Your saved work and PDF export stay yours. Join our early adopter community to keep creating work samples.',
@@ -36,6 +36,7 @@ export const PAYWALL_LIMITS: Record<keyof PaywallText, number> = {
 
 // Earlier wording that was saved as-is from the Admin tab. Treated as "not changed", so families see the new wording.
 const OLD_DEFAULTS: Partial<Record<keyof PaywallText, string[]>> = {
+  features: ['Work Sample Creation • Standards Matching • Student Vault • Branded PDF Records'],
   subtitleTrial: ['You still have {number} free trial matches. Upgrade any time to keep going.'],
   subtitleUsedUp: ['Your free trial matches are complete. Join our early adopter community to keep creating work samples.'],
   finePrint: [

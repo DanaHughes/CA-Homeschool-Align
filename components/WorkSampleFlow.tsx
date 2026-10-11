@@ -14,6 +14,7 @@ import {
   needsContinuationPage
 } from '../services/gradeExpectations';
 import { shrinkImage } from '../services/imageUtils';
+import { useSiteText } from '../services/siteContent';
 import { buildWorkSamplePdf, downloadBlob, openMailDraft, safeFileName, shareFile } from '../services/pdfExport';
 import {
   lpForDate,
@@ -228,6 +229,7 @@ const printElement = (el: HTMLElement) => {
 export const WorkSampleFlow: React.FC<Props> = ({
   user, students, records, isPro, trialOver, onNeedPaywall, onSearchUsed, onAddStudent, onSaveRecord
 }) => {
+  const siteText = useSiteText();
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Screen 1
@@ -653,8 +655,8 @@ export const WorkSampleFlow: React.FC<Props> = ({
         <p className="text-[#81adb3] font-black text-[11px] uppercase tracking-[0.3em] mb-3">MAKING HOMESCHOOL DOABLE.</p>
         <p className="text-slate-400 text-[9px] font-medium uppercase tracking-wider italic">Independent tool. Not affiliated with the State of California or any public education agency.</p>
         <p className="text-slate-400 text-[9px] font-medium uppercase tracking-wider italic mt-1 no-print">
-          <a href="https://www.charterhomeschoolhelp.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#367c92] hover:underline">
-            © {new Date().getFullYear()} Charter Homeschool Help | All rights reserved
+          <a href={siteText.websiteUrl} target="_blank" rel="noopener noreferrer" className="hover:text-[#367c92] hover:underline">
+            © {new Date().getFullYear()} {siteText.footerLine}
           </a>
         </p>
       </div>
@@ -759,7 +761,7 @@ export const WorkSampleFlow: React.FC<Props> = ({
             <div className="max-w-2xl">
               <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Work sample options</div>
               <p className="text-sm text-slate-500 leading-relaxed">
-                Click on the work sample option that sounds like the best fit for your child, or is best aligned to an I Can Statement or Standard goal for your child.
+                {siteText.optionsHeading}
               </p>
             </div>
             <button type="button" onClick={() => setStep(1)} className="px-5 py-3 rounded-2xl border-2 border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:border-[#81adb3] min-h-[44px]">Change activity</button>
@@ -788,7 +790,7 @@ export const WorkSampleFlow: React.FC<Props> = ({
                       className="self-start flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-[#367c92] min-h-[36px]"
                     >
                       <span style={{ display: 'inline-block', transition: 'transform .2s', transform: open ? 'rotate(90deg)' : 'none' }}>▸</span>
-                      Standard alignment for this activity
+                      {siteText.optionsDropdown}
                     </button>
                     {open && (
                       <div className="rounded-2xl bg-[#81adb3]/15 p-4 space-y-2">

@@ -71,6 +71,35 @@ export const dbService = {
     await firestore.setDoc(firestore.doc(db, 'settings', 'paywall'), { ...text, updatedAt: Date.now() });
   },
 
+  // Editable wording (Admin > Text & Links) and the Start Here steps and questions (Admin > FAQs & Steps).
+  getSiteText: async (): Promise<Record<string, unknown>> => {
+    try {
+      const snap = await firestore.getDoc(firestore.doc(db, 'settings', 'siteText'));
+      return snap.exists() ? (snap.data() as Record<string, unknown>) : {};
+    } catch (e) {
+      console.warn('Could not load the saved wording; using the original words.', e);
+      return {};
+    }
+  },
+
+  setSiteText: async (text: Record<string, string>): Promise<void> => {
+    await firestore.setDoc(firestore.doc(db, 'settings', 'siteText'), { ...text, updatedAt: Date.now() });
+  },
+
+  getStartHere: async (): Promise<Record<string, unknown>> => {
+    try {
+      const snap = await firestore.getDoc(firestore.doc(db, 'settings', 'startHere'));
+      return snap.exists() ? (snap.data() as Record<string, unknown>) : {};
+    } catch (e) {
+      console.warn('Could not load the Start Here page; using the original words.', e);
+      return {};
+    }
+  },
+
+  setStartHere: async (content: { steps: unknown[]; faqs: unknown[] }): Promise<void> => {
+    await firestore.setDoc(firestore.doc(db, 'settings', 'startHere'), { ...content, updatedAt: Date.now() });
+  },
+
   getStudents: async (userId: string): Promise<Student[]> => {
     const q = firestore.query(firestore.collection(db, 'students'), firestore.where('userId', '==', userId));
     const querySnapshot = await firestore.getDocs(q);

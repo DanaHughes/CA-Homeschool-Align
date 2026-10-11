@@ -94,9 +94,10 @@ service cloud.firestore {
     }
 
     // Settings (for example the words on the payment screen): anyone signed in can read,
-    // only the admin can change them.
+    // only the admin can change them. The wording document "siteText" is also readable before
+    // sign-in, because the sign-in page shows it.
     match /settings/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() || docId == 'siteText';
       allow write: if isAdmin();
     }
 

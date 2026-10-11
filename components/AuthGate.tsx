@@ -1,3 +1,4 @@
+import { useSiteText } from '../services/siteContent';
 import React, { useState } from 'react';
 import { authService } from '../services/authService';
 import { User } from '../types';
@@ -17,6 +18,7 @@ const LogoIcon = ({ className = "w-48 h-12" }) => (
 );
 
 export const AuthGate: React.FC<AuthGateProps> = ({ onLogin, onShowTerms }) => {
+  const siteText = useSiteText();
   const [mode, setMode] = useState<'login' | 'signup'>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -80,14 +82,14 @@ export const AuthGate: React.FC<AuthGateProps> = ({ onLogin, onShowTerms }) => {
             <h1 className="text-4xl font-black text-slate-800 tracking-tighter leading-tight mb-2">
                 Homeschool Work Sample Pro
             </h1>
-            <a href="https://www.charterhomeschoolhelp.com" target="_blank" rel="noopener noreferrer" className="inline-block text-slate-400 hover:text-[#367c92] text-[10px] font-black uppercase tracking-[0.25em] mb-4">by Charter Homeschool Help</a>
+            <a href={siteText.websiteUrl} target="_blank" rel="noopener noreferrer" className="inline-block text-slate-400 hover:text-[#367c92] text-[10px] font-black uppercase tracking-[0.25em] mb-4">{siteText.headerByline}</a>
             <p className="text-[#81adb3] text-[11px] font-black uppercase tracking-[0.2em] mb-4 leading-relaxed max-w-[280px] mx-auto">
-                MAKING HOMESCHOOL DOABLE.
+                {siteText.loginTagline}
             </p>
             <div className="text-slate-400 text-[11px] font-medium leading-relaxed max-w-[340px] mx-auto mb-6 space-y-4">
-                <p>Turn any real life or hands-on learning activity into a charter-ready work sample instantly. Just snap a photo or describe the activity, and the app will generate several polished work sample options your child may annotate within the app or print out before adding their feedback. That's it!</p>
-                <p>This is the fastest way to get a charter-ready work sample based on real-life knowledge your child actually participated in, without the extra busy work or searching for worksheets the night before your learning period meetings. Perfect for personal or PSA records as well!</p>
-                <p className="font-black text-slate-500">Developed by a CA charter homeschool teacher with you in mind.</p>
+                <p>{siteText.loginIntro1}</p>
+                <p>{siteText.loginIntro2}</p>
+                <p className="font-black text-slate-500">{siteText.loginIntro3}</p>
             </div>
         </div>
 
@@ -173,9 +175,9 @@ export const AuthGate: React.FC<AuthGateProps> = ({ onLogin, onShowTerms }) => {
         </div>
       </div>
 
-      <a href="https://www.charterhomeschoolhelp.com" target="_blank" rel="noopener noreferrer" className="relative z-10 mt-8 inline-flex items-center gap-3 text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-[#367c92]" title="Charter Homeschool Help (opens our website)">
+      <a href={siteText.websiteUrl} target="_blank" rel="noopener noreferrer" className="relative z-10 mt-8 inline-flex items-center gap-3 text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-[#367c92]" title="Charter Homeschool Help (opens our website)">
         <img src="/brand/chh-logo.png" alt="Charter Homeschool Help" className="w-10 h-10" />
-        <span>© {new Date().getFullYear()} Charter Homeschool Help | All Rights Reserved</span>
+        <span>© {new Date().getFullYear()} {siteText.footerLine}</span>
       </a>
     </div>
   );
