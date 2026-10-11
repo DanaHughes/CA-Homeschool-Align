@@ -85,7 +85,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ onLogin, onShowTerms }) => {
                 MAKING HOMESCHOOL DOABLE.
             </p>
             <p className="text-slate-400 text-[11px] font-medium leading-relaxed max-w-[320px] mx-auto mb-6">
-                Turn any real life learning activity into a charter-ready work sample. Just snap a photo or describe the activity, and we'll match it to CA standards and create a polished printable or annotable worksheet for your child to complete and send to your charter teacher, personal, or PSA records.
+                Turn any real life learning activity into a charter-ready work sample. Just snap a photo or describe the activity, and we'll match it to CA standards and create a printable or annotable work sample page for your child to complete. Then send the finished work sample to your charter teacher, or keep it for your personal or PSA records.
             </p>
         </div>
 
