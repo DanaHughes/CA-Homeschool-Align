@@ -2246,7 +2246,7 @@ export default function App() {
                             <div className="space-y-3">
                                 <div className="w-10 h-10 bg-[#e7b64f]/10 text-[#e7b64f] rounded-2xl flex items-center justify-center font-black text-sm">2</div>
                                 <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Choose a work sample option</h4>
-                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Choose a work sample option from the generated learning artifacts. Select the work sample option that is the best fit for your child.</p>
+                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Choose a work sample option that is the best fit for your child from the generated learning artifacts instantly created just for you.</p>
                             </div>
                             <div className="space-y-3">
                                 <div className="w-10 h-10 bg-[#f4989c]/10 text-[#f4989c] rounded-2xl flex items-center justify-center font-black text-sm">3</div>
