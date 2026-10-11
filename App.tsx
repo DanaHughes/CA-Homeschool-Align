@@ -2237,21 +2237,26 @@ export default function App() {
 
                     <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
                         <h2 className="text-2xl font-black text-slate-800 mb-6 uppercase tracking-tighter">How to use Homeschool Work Sample Pro</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                             <div className="space-y-3">
                                 <div className="w-10 h-10 bg-[#81adb3]/10 text-[#81adb3] rounded-2xl flex items-center justify-center font-black text-sm">1</div>
-                                <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Select Context</h4>
-                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Pick a Target Student or Grade focus levels.</p>
+                                <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Enter your activity</h4>
+                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Enter a photo or key words representing the real life learning activity your child completed. Choose the grade and subject, then add a photo or type a few words about what your child did.</p>
                             </div>
                             <div className="space-y-3">
                                 <div className="w-10 h-10 bg-[#e7b64f]/10 text-[#e7b64f] rounded-2xl flex items-center justify-center font-black text-sm">2</div>
-                                <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Input Activity</h4>
-                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Type your activity or upload a photo.</p>
+                                <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Choose a work sample option</h4>
+                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Choose a work sample option from the generated learning artifacts. Select the work sample option that is the best fit for your child.</p>
                             </div>
                             <div className="space-y-3">
                                 <div className="w-10 h-10 bg-[#f4989c]/10 text-[#f4989c] rounded-2xl flex items-center justify-center font-black text-sm">3</div>
-                                <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Add to Vault</h4>
-                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Save the match to your private vault.</p>
+                                <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Provide activity feedback</h4>
+                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Your child will provide brief proof of knowledge based on the activity they completed. You may choose to include a brief reflection, drawing what they learned, or answering questions about what they learned in their work sample generation.</p>
+                            </div>
+                            <div className="space-y-3">
+                                <div className="w-10 h-10 bg-[#367c92]/10 text-[#367c92] rounded-2xl flex items-center justify-center font-black text-sm">4</div>
+                                <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Send it</h4>
+                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Print it, download the PDF, or use "Email or share" to send it to your charter teacher.</p>
                             </div>
                         </div>
                     </div>
@@ -2260,9 +2265,9 @@ export default function App() {
                         <h2 className="text-2xl font-black text-slate-800 mb-8 uppercase tracking-tighter">Frequently Asked Questions</h2>
                         <div className="space-y-6">
                             <div className="border-b border-slate-100 pb-6">
-                                <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-3">Can I select multiple grade levels for one student?</h3>
+                                <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-3">Can I add a picture to the work sample?</h3>
                                 <p className="text-sm text-slate-600 leading-relaxed">
-                                    Yes, you can select up to 3 grade levels when searching. This feature is designed for "family-style" homeschooling where multiple children participate in the same lesson. However, <span className="font-black">when saving standards to a student's vault, you must only save standards that match their legal grade level</span> for charter compliance. The tool allows you to see matches across grades, but each student's vault should only contain standards appropriate for their enrolled grade.
+                                    You may choose to use the photo you uploaded of the activity within the work sample generation, choose a different one from your device or phone, or let your child draw or annotate in the box. You can also print the page so your child can color in the box by hand.
                                 </p>
                             </div>
                             <div className="border-b border-slate-100 pb-6">
@@ -2271,16 +2276,10 @@ export default function App() {
                                     Yes. All student data is stored in your private, encrypted account vault. We do not sell or share student identifiers with third parties, districts, or government agencies. Your data is for your exclusive record-keeping use only. Zero-reporting guarantee active.
                                 </p>
                             </div>
-                            <div className="border-b border-slate-100 pb-6">
-                                <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-3">What does "match logic" mean?</h3>
-                                <p className="text-sm text-slate-600 leading-relaxed">
-                                    Match logic is a parent-friendly explanation of how your activity connects to a CA standard. It translates educational jargon into practical language. Pro users receive match logic automatically; free trial users get it for their first 25 searches.
-                                </p>
-                            </div>
                             <div className="pb-6">
                                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-3">How do I turn this into charter-approved work samples?</h3>
                                 <p className="text-sm text-slate-600 leading-relaxed">
-                                    The inferred match logic provided by this tool is a starting point. To create charter-compliant work samples, Check out our comprehensive Charter Homeschool Blueprint: <a href={BLUEPRINT_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="text-[#81adb3] font-black hover:underline">The Charter Homeschool Blueprint</a>. This guide shows you how to document learning in formats your charter will accept.
+                                    The work sample options provided by this tool are a starting point. To create charter-compliant work samples, Check out our comprehensive Charter Homeschool Blueprint: <a href={BLUEPRINT_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="text-[#81adb3] font-black hover:underline">The Charter Homeschool Blueprint</a>. This guide shows you how to document learning in formats your charter will accept.
                                 </p>
                             </div>
                         </div>
