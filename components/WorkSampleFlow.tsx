@@ -263,6 +263,8 @@ export const WorkSampleFlow: React.FC<Props> = ({
   const [tool, setTool] = useState<Tool>('none');
   const [color, setColor] = useState(PALETTE[0][1]);
   const [thick, setThick] = useState(false);
+  // How big the child's typing looks (percent). Changes only the writing areas, not the printed page layout.
+  const [textScale, setTextScale] = useState(100);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState<'' | 'download' | 'share'>('');
@@ -516,6 +518,13 @@ export const WorkSampleFlow: React.FC<Props> = ({
       on ? 'bg-[#e7b64f] border-[#e7b64f] text-slate-900' : 'bg-white border-slate-200 text-slate-500 hover:border-[#81adb3]'
     }`;
 
+  const TEXT_SIZES = [80, 90, 100, 115, 130, 150, 175, 200];
+  const writeStyle: React.CSSProperties = { fontSize: `${textScale}%` };
+  const bumpText = (dir: 1 | -1) => {
+    const at = TEXT_SIZES.indexOf(textScale);
+    const next = TEXT_SIZES[Math.min(TEXT_SIZES.length - 1, Math.max(0, (at < 0 ? 2 : at) + dir))];
+    setTextScale(next);
+  };
   const toolClass = (on: boolean) =>
     `px-4 py-3 rounded-2xl border-2 text-[10px] font-black uppercase tracking-widest min-h-[44px] transition-all ${
       on ? 'bg-[#81adb3] border-[#81adb3] text-slate-900' : 'bg-white border-slate-200 text-slate-500 hover:border-[#81adb3]'
@@ -606,8 +615,9 @@ export const WorkSampleFlow: React.FC<Props> = ({
         <label htmlFor="ws-write" style={{ marginBottom: 4 }}>{content.journalPrompt}</label>
         <textarea
           id="ws-write"
-          className={`ws-write ${young ? 'primary' : ''}`}
+          className={`ws-write ${young ? 'primary' : ''} ${writing.trim() ? 'typed' : ''}`}
           rows={7}
+          style={writeStyle}
           value={writing}
           onChange={e => setWriting(e.target.value)}
         />
@@ -633,6 +643,7 @@ export const WorkSampleFlow: React.FC<Props> = ({
               <label htmlFor={`ws-box-${k}`}>{content.organizerLabels[k]}</label>
               <textarea
                 id={`ws-box-${k}`}
+                style={writeStyle}
                 value={boxes[k]}
                 onChange={e => setBoxes(b => b.map((v, i) => (i === k ? e.target.value : v)))}
               />
@@ -846,6 +857,11 @@ export const WorkSampleFlow: React.FC<Props> = ({
             </span>
             <button type="button" onClick={() => setThick(t => !t)} aria-pressed={thick} className={toolClass(thick)}>{thick ? 'Thin pen' : 'Thick pen'}</button>
             <button type="button" onClick={() => setClearTick(t => t + 1)} className={toolClass(false)}>Clear drawing</button>
+            <span className="inline-flex items-center gap-2" role="group" aria-label="Writing size">
+              <button type="button" onClick={() => bumpText(-1)} disabled={textScale <= TEXT_SIZES[0]} aria-label="Smaller writing" className={`${toolClass(false)} disabled:opacity-40`}>A−</button>
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 min-w-[3.5rem] text-center" aria-live="polite">{textScale}%</span>
+              <button type="button" onClick={() => bumpText(1)} disabled={textScale >= TEXT_SIZES[TEXT_SIZES.length - 1]} aria-label="Larger writing" className={`${toolClass(false)} disabled:opacity-40`}>A+</button>
+            </span>
             {needsContinuationPage(fields.grade) && (
               <button type="button" onClick={() => setExtraPages(p => [...p, ''])} className={toolClass(false)}>Add a continuation page</button>
             )}
@@ -863,8 +879,8 @@ export const WorkSampleFlow: React.FC<Props> = ({
                 <label htmlFor={`ws-cw-${i}`}>Continue your writing here (page {i + 2}).</label>
                 <textarea
                   id={`ws-cw-${i}`}
-                  className={`ws-write ${young ? 'primary' : ''}`}
-                  style={{ flex: 1 }}
+                  className={`ws-write ${young ? 'primary' : ''} ${text.trim() ? 'typed' : ''}`}
+                  style={{ flex: 1, ...writeStyle }}
                   value={text}
                   onChange={e => setExtraPages(p => p.map((t, k) => (k === i ? e.target.value : t)))}
                 />
