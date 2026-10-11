@@ -24,6 +24,15 @@ const BLUEPRINT_GUIDE_URL = "https://www.charterhomeschoolhelp.com/products/the-
 
 const ADMIN_EMAIL = 'dana2andrea@gmail.com';
 
+const LogoIcon = ({ className = "w-24 h-8" }) => (
+  <div className={`${className} bg-gradient-to-r from-[#81adb3] via-[#e7b64f] to-[#f4989c] rounded-full flex items-center justify-center shadow-md relative no-print`}>
+    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l.707.707M6.343 6.343l.707-.707M8 11h8a2 2 0 012 2v5H6v-5a2 2 0 012-2z" />
+    </svg>
+    <div className="absolute top-0.5 right-1.5 w-2 h-2 bg-white/50 rounded-full border border-white/80"></div>
+  </div>
+);
+
 const ThinkingState = ({ message }: { message?: string }) => {
   const [msgIndex, setMsgIndex] = useState(0);
   const messages = ["Consulting CA Frameworks...", "Mapping adventure hooks...", "Finding the math in the magic...", "Translating play into standards...", "Almost there..."];
@@ -1880,9 +1889,7 @@ export default function App() {
       <header className="bg-white/90 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100 no-print">
         <div className="max-w-7xl mx-auto px-6 h-24 flex justify-between items-center">
             <div className="flex items-center gap-4">
-                <a href="https://www.charterhomeschoolhelp.com" target="_blank" rel="noopener noreferrer" className="flex-none" title="Charter Homeschool Help (opens our website)">
-                  <img src="/brand/chh-logo.png" alt="Charter Homeschool Help" className="w-16 h-16" />
-                </a>
+                <LogoIcon />
                 <div>
                    <div className="flex items-center gap-2">
                       <h1 className="text-lg lg:text-xl font-black text-slate-800 tracking-tighter leading-tight">Homeschool Work Sample <span className="text-[#e7b64f]">Pro</span></h1>
@@ -2301,11 +2308,10 @@ export default function App() {
 
       <footer className="w-full py-6 border-t border-slate-100 bg-white/50 backdrop-blur-sm mt-auto no-print">
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-            <a href="https://www.charterhomeschoolhelp.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#367c92] hover:underline">
-              © {new Date().getFullYear()} Charter Homeschool Help | All Rights Reserved
-            </a>
-          </p>
+          <a href="https://www.charterhomeschoolhelp.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-[#367c92]" title="Charter Homeschool Help (opens our website)">
+            <img src="/brand/chh-logo.png" alt="Charter Homeschool Help" className="w-10 h-10" />
+            <span className="hover:underline">© {new Date().getFullYear()} Charter Homeschool Help | All Rights Reserved</span>
+          </a>
         </div>
       </footer>
     </div>

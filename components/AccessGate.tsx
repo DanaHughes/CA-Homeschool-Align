@@ -23,6 +23,14 @@ interface AccessGateProps {
   previewMode?: boolean;
 }
 
+const LogoIcon = ({ className = "w-16 h-16" }) => (
+  <div className={`${className} relative flex items-center justify-center bg-gradient-to-br from-[#81adb3] via-[#e7b64f] to-[#f4989c] rounded-2xl shadow-xl transition-transform hover:scale-105`}>
+    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l.707.707M6.343 6.343l.707-.707M8 11h8a2 2 0 012 2v5H6v-5a2 2 0 012-2z" />
+    </svg>
+  </div>
+);
+
 export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel, trialRemaining = 0, trialDaysLeft = 7, text = DEFAULT_PAYWALL_TEXT, previewMode = false }) => {
   const [userName, setUserName] = useState(user?.name || '');
   const [error, setError] = useState('');
@@ -82,7 +90,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
         
         {/* Header Section */}
         <div className="flex flex-col items-center text-center mb-10">
-            <img src="/brand/chh-logo.png" alt="Charter Homeschool Help" className="mb-6 w-20 h-20" />
+            <LogoIcon className="mb-6" />
             <h1 className="text-3xl md:text-4xl font-black text-slate-800 mb-2 tracking-tighter leading-none">{text.heading}</h1>
             <p className="text-slate-500 text-sm font-medium px-4">
               {trialRemaining > 0 ? trialSentence(text.subtitleTrial, trialRemaining, trialDaysLeft) : text.subtitleUsedUp}
