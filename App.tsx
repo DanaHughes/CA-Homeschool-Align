@@ -10,6 +10,8 @@ import { AuthGate } from './components/AuthGate';
 import { WorkSampleFlow } from './components/WorkSampleFlow';
 import { PlanPage } from './components/PlanPage';
 import { PlanCards } from './components/PlanCards';
+import { AdminPaywallEditor } from './components/AdminPaywallEditor';
+import { DEFAULT_PAYWALL_TEXT, PaywallText, mergePaywallText } from './services/paywallText';
 import { InstallPrompt, InstallDirections } from './components/InstallPrompt';
 import { buildVaultPdf } from './services/vaultPdf';
 import { downloadBlob } from './services/pdfExport';
@@ -92,6 +94,10 @@ export default function App() {
 
   const [showPaywall, setShowPaywall] = useState(false);
   const [lowMatchesDismissed, setLowMatchesDismissed] = useState(false);
+  const [paywallText, setPaywallText] = useState<PaywallText>(DEFAULT_PAYWALL_TEXT);
+  const [adminSection, setAdminSection] = useState<'messages' | 'payment'>('messages');
+  const [paywallDraft, setPaywallDraft] = useState<PaywallText | null>(null);
+  const [paywallPreview, setPaywallPreview] = useState<{ text: PaywallText; trialRemaining: number } | null>(null);
   const [pendingStandardToSave, setPendingStandardToSave] = useState<Standard | null>(null);
   const [showStudentSelectModal, setShowStudentSelectModal] = useState(false);
   const [pendingStripeSession, setPendingStripeSession] = useState<string | null>(() => {
@@ -165,6 +171,16 @@ export default function App() {
       setIsAppLoading(false);
     });
   }, []);
+
+  // Load the words for the payment screen (Dana can change them in the Admin tab).
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    dbService.getPaywallText().then(saved => {
+      if (!cancelled) setPaywallText(mergePaywallText(saved));
+    });
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   // A link ending in ?upgrade=1 (for emails, the website or testing) opens the plans screen once the
   // person is signed in. The request is remembered in sessionStorage so it survives the sign-in step.
@@ -1075,8 +1091,18 @@ export default function App() {
   if (isAppLoading) return null;
   if (!user) return <AuthGate onLogin={setUser} onShowTerms={() => setShowTermsModal(true)} />;
   
+  if (paywallPreview) return <AccessGate
+    user={user}
+    text={paywallPreview.text}
+    trialRemaining={paywallPreview.trialRemaining}
+    previewMode
+    onUnlock={() => {}}
+    onCancel={() => setPaywallPreview(null)}
+  />;
+
   if (showPaywall && !isPro) return <AccessGate
     user={user}
+    text={paywallText}
     trialRemaining={trialRemaining}
     onUnlock={(name, code) => {
       dbService.unlockUser(user.id, name, code).then(() => {
@@ -2122,12 +2148,25 @@ export default function App() {
                 <div className="flex items-end justify-between border-b border-slate-200 pb-6">
                   <div>
                     <h2 className="text-4xl font-black text-slate-800 uppercase tracking-tighter leading-none mb-1">Admin</h2>
-                    <p className="text-[#e7b64f] text-xs font-black uppercase tracking-widest">In-App Messages</p>
+                    <p className="text-[#e7b64f] text-xs font-black uppercase tracking-widest">{adminSection === 'messages' ? 'In-App Messages' : 'Payment Screen Words'}</p>
                   </div>
-                  <button onClick={loadAdminMessages} className="text-[9px] font-black text-[#81adb3] uppercase tracking-widest border border-[#81adb3]/20 px-4 py-2 rounded-xl hover:bg-[#81adb3]/5 transition-colors">
+                  {adminSection === 'messages' && <button onClick={loadAdminMessages} className="text-[9px] font-black text-[#81adb3] uppercase tracking-widest border border-[#81adb3]/20 px-4 py-2 rounded-xl hover:bg-[#81adb3]/5 transition-colors">
                     {isLoadingMessages ? 'Loading...' : 'Refresh'}
-                  </button>
+                  </button>}
                 </div>
+                <div className="flex gap-3 no-print">
+                  <button onClick={() => setAdminSection('messages')} className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${adminSection === 'messages' ? 'bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Messages</button>
+                  <button onClick={() => setAdminSection('payment')} className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${adminSection === 'payment' ? 'bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Payment screen</button>
+                </div>
+                {adminSection === 'payment' && (
+                  <AdminPaywallEditor
+                    draft={paywallDraft ?? paywallText}
+                    onDraftChange={setPaywallDraft}
+                    onSave={async (text) => { await dbService.setPaywallText({ ...text }); setPaywallText(text); setPaywallDraft(null); }}
+                    onPreview={(text, remaining) => setPaywallPreview({ text, trialRemaining: remaining })}
+                  />
+                )}
+                {adminSection === 'messages' && (<>
                 <p className="text-sm text-slate-500">Nothing is emailed from the app. Each note below shows the account it came from, so you can email that person yourself.</p>
                 {messagesError && <p className="text-sm font-bold text-red-500">{messagesError}</p>}
                 {!messagesError && !isLoadingMessages && adminMessages.length === 0 && (
@@ -2158,6 +2197,7 @@ export default function App() {
                     </div>
                   </div>
                 ))}
+                </>)}
               </div>
             )}
 

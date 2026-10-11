@@ -65,6 +65,21 @@ export const dbService = {
     await firestore.deleteDoc(firestore.doc(db, 'messages', messageId));
   },
 
+  // Words on the payment screen. Anyone signed in can read; only the admin can save (database rules).
+  getPaywallText: async (): Promise<Record<string, unknown>> => {
+    try {
+      const snap = await firestore.getDoc(firestore.doc(db, 'settings', 'paywall'));
+      return snap.exists() ? (snap.data() as Record<string, unknown>) : {};
+    } catch (e) {
+      console.warn('Could not load the payment screen text; using the original words.', e);
+      return {};
+    }
+  },
+
+  setPaywallText: async (text: Record<string, string>): Promise<void> => {
+    await firestore.setDoc(firestore.doc(db, 'settings', 'paywall'), { ...text, updatedAt: Date.now() });
+  },
+
   unlockUser: async (userId: string, name: string, code: string): Promise<void> => {
     const userRef = firestore.doc(db, 'users', userId);
     await firestore.updateDoc(userRef, {
