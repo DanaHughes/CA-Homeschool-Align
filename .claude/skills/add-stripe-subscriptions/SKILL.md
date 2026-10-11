@@ -82,9 +82,24 @@ Your own account may be "always Pro" (a free-Pro email list), so it never sees t
 - Cancel at period end: account stays Pro until the end date. Cancel immediately: goes back to free the same day. Past_due (failed card) keeps access while Stripe retries.
 - A refund usually does not return Stripe's processing fee (best understanding; about 3% + 30 cents in the US).
 
+## Phase 6b: Let families find the upgrade and manage it (built after the first launch)
+Do not make the payment screen reachable only after the free trial runs out. Build (templates in `templates/app/` and `templates/api/create-portal-session.ts`):
+- An **Upgrade** button in the top menu (and phone bottom bar) for people who have not upgraded; a "N trial uses left / See plans" banner when the trial is nearly used; a plans card on the help/start page; a link `?upgrade=1` that opens the payment screen after sign-in (store the request in sessionStorage so it survives the sign-in step; useful for emails and for testing).
+- A **My Plan** page: plan name, member-since date, and a **Manage subscription** button that opens Stripe's customer portal. The server route checks the person's sign-in token (Firebase `verifyIdToken`) and reads their `stripeCustomerId`, so people can only open their own billing page. Families activated before the webhook existed have no customer id: show a friendly "ask us" message.
+- Switch the portal on in Stripe: gear icon (top right) -> Billing -> Customer portal. A "Default" configuration with an ID starting `bpc_` should exist; confirm **Cancel subscriptions** is on and set to **Cancel at end of billing period** (the family keeps access until the paid time ends). Nothing needs saving if nothing was changed. Do not click "Activate link".
+- Keep prices in ONE file (`plans.ts`) and compute any "Save X%" from it.
+- Payment screen: add a plain "You are purchasing: <product name> · plan · price · renews automatically until you cancel" box, and make the words editable in an admin page (`paywallText.ts` + `AdminPaywallEditor.tsx`, saved in a `settings/paywall` database document: signed-in users may read, only the admin may write; empty boxes fall back to the original words; prices are never editable because they must match Stripe).
+
+## Phase 6c: Free trial and fake-account lessons (decide BEFORE launch)
+- Enforce the trial on the SERVER. A trial counted only in the browser, or in a database record the user can edit, can be reset by anyone.
+- Email/password signups accept made-up addresses unless email verification is REQUIRED. Verification emails are often sent but not enforced: check.
+- Ideas, strongest value first: server-kept trial count; require verified email; treat Gmail dots and +tags as one address (add an exception for the owner's own +test account); a global daily cap on free uses (a hard ceiling on cost); block disposable-email domains; "Continue with Google"; soft per-IP signup limit; partner codes. Usually NOT worth it: SMS verification, card-required trials (auto-charge rules), device marking, removing PDF download from the trial.
+- Start a time-limited trial at the FIRST USE, not at signup. After the trial, keep the person's saved work readable and exportable.
+- State the rules plainly on the signup/payment screens ("one free trial per person").
+
 ## Phase 7: Still to do after launch
-- A "Manage my subscription" button (Stripe Billing customer portal; the person must also configure the portal in Stripe settings).
-- Tighten database rules (see Phase 3).
+- (Done in Phase 6b) Manage subscription button and portal.
+- Tighten database rules (see Phase 3): this also closes the 'edit your own trial counter' hole.
 - Coupon/promo codes, usage limits, and a spending cap on any paid AI service the app calls.
 
 ## Things NOT to use
