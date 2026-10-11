@@ -8,6 +8,8 @@ import { StandardCard } from './components/StandardCard';
 import { AccessGate } from './components/AccessGate';
 import { AuthGate } from './components/AuthGate';
 import { WorkSampleFlow } from './components/WorkSampleFlow';
+import { PlanPage } from './components/PlanPage';
+import { PlanCards } from './components/PlanCards';
 import { InstallPrompt, InstallDirections } from './components/InstallPrompt';
 import { buildVaultPdf } from './services/vaultPdf';
 import { downloadBlob } from './services/pdfExport';
@@ -89,6 +91,7 @@ export default function App() {
   const [isSubmittingFeature, setIsSubmittingFeature] = useState(false);
 
   const [showPaywall, setShowPaywall] = useState(false);
+  const [lowMatchesDismissed, setLowMatchesDismissed] = useState(false);
   const [pendingStandardToSave, setPendingStandardToSave] = useState<Standard | null>(null);
   const [showStudentSelectModal, setShowStudentSelectModal] = useState(false);
   const [pendingStripeSession, setPendingStripeSession] = useState<string | null>(() => {
@@ -162,6 +165,24 @@ export default function App() {
       setIsAppLoading(false);
     });
   }, []);
+
+  // A link ending in ?upgrade=1 (for emails, the website or testing) opens the plans screen once the
+  // person is signed in. The request is remembered in sessionStorage so it survives the sign-in step.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('upgrade')) {
+      sessionStorage.setItem('open_upgrade', '1');
+      url.searchParams.delete('upgrade');
+      window.history.replaceState({}, '', url.toString());
+    }
+    if (!user || !sessionStorage.getItem('open_upgrade')) return;
+    sessionStorage.removeItem('open_upgrade');
+    const alreadyPro = user.isPaid || PRO_FREE_EMAILS.includes(user.email.toLowerCase());
+    if (alreadyPro) setActiveTab('plan');
+    else setShowPaywall(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Detect return from Stripe Checkout and unlock the user once payment is verified.
   useEffect(() => {
@@ -1048,12 +1069,15 @@ export default function App() {
   const activeViewingStudent = students.find(s => s.id === viewingStudentId);
   const isPro = user?.isPaid || (user && PRO_FREE_EMAILS.includes(user.email.toLowerCase()));
   const hasProAccess = isPro || (user && user.searchCount < FREE_SEARCH_LIMIT);
+  const trialRemaining = Math.max(0, FREE_SEARCH_LIMIT - (user?.searchCount || 0));
+  const isComplimentary = !!user && PRO_FREE_EMAILS.includes(user.email.toLowerCase());
 
   if (isAppLoading) return null;
   if (!user) return <AuthGate onLogin={setUser} onShowTerms={() => setShowTermsModal(true)} />;
   
   if (showPaywall && !isPro) return <AccessGate
     user={user}
+    trialRemaining={trialRemaining}
     onUnlock={(name, code) => {
       dbService.unlockUser(user.id, name, code).then(() => {
         setUser({ ...user, isPaid: true, name: name, accountTier: 'pro' });
@@ -1806,6 +1830,16 @@ export default function App() {
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z"/></svg>
                 <span className="text-[8px] font-black uppercase tracking-widest">Start Here</span>
             </button>
+            <button
+                onClick={() => {
+                  setActiveTab('plan');
+                  setViewingStudentId(null);
+                }}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all duration-300 ${activeTab === 'plan' ? 'text-[#e7b64f] scale-110' : !isPro ? 'text-[#e7b64f]' : 'text-slate-500 opacity-60'}`}
+            >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                <span className="text-[8px] font-black uppercase tracking-widest">{isPro ? 'My Plan' : 'Upgrade'}</span>
+            </button>
             {user?.email === ADMIN_EMAIL && (
               <button
                 onClick={() => { setActiveTab('admin'); setViewingStudentId(null); }}
@@ -1828,7 +1862,7 @@ export default function App() {
                       {isPro && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[8px] font-black uppercase rounded-md tracking-widest ring-1 ring-emerald-200">Pro</span>}
                    </div>
                    <span className="text-[8px] font-black uppercase tracking-[0.15em] text-slate-400">
-                    v{APP_VERSION} • {isPro ? 'Beta License Active' : `${Math.max(0, FREE_SEARCH_LIMIT - (user?.searchCount || 0))} Trial Matches Remaining`}
+                    v{APP_VERSION} • {isPro ? 'Beta License Active' : `${trialRemaining} Trial Matches Remaining`}
                    </span>
                 </div>
             </div>
@@ -1845,6 +1879,13 @@ export default function App() {
                  setActiveTab('features'); 
                  setViewingStudentId(null);
                }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'features' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Start Here</button>
+               <button onClick={() => {
+                 setActiveTab('plan');
+                 setViewingStudentId(null);
+               }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'plan' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>My Plan</button>
+               {!isPro && (
+                 <button onClick={() => setShowPaywall(true)} className="px-5 py-2.5 rounded-full bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 text-[10px] font-black uppercase tracking-[0.2em] shadow-md hover:brightness-105 active:scale-95 transition-all">Upgrade</button>
+               )}
                {user?.email === ADMIN_EMAIL && (
                  <button onClick={() => {
                    setActiveTab('admin');
@@ -1864,6 +1905,26 @@ export default function App() {
       {user && <InstallPrompt />}
 
       <main className="flex-grow max-w-7xl mx-auto px-6 py-12 w-full z-10 mb-20">
+            {activeTab === 'search' && user && !isPro && trialRemaining > 0 && trialRemaining <= 5 && !lowMatchesDismissed && (
+              <div className="max-w-4xl mx-auto mb-8 bg-[#fddc96]/40 border border-[#e7b64f]/40 rounded-[2rem] px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 animate-fade-in no-print">
+                <p className="flex-grow text-[11px] font-black uppercase tracking-widest text-slate-700">
+                  {trialRemaining} trial {trialRemaining === 1 ? 'match' : 'matches'} left
+                </p>
+                <button onClick={() => setShowPaywall(true)} className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 text-[10px] font-black uppercase tracking-[0.2em] shadow-md hover:brightness-105 active:scale-95 transition-all">See plans</button>
+                <button onClick={() => setLowMatchesDismissed(true)} aria-label="Dismiss" className="text-slate-400 hover:text-slate-600 text-lg leading-none font-black px-2">×</button>
+              </div>
+            )}
+
+            {activeTab === 'plan' && user && (
+              <PlanPage
+                user={user}
+                isPro={!!isPro}
+                isComplimentary={isComplimentary}
+                trialRemaining={trialRemaining}
+                onUpgrade={() => setShowPaywall(true)}
+              />
+            )}
+
             {activeTab === 'search' && user && (
               <WorkSampleFlow
                 user={user}
@@ -2102,6 +2163,15 @@ export default function App() {
 
             {activeTab === 'features' && (
                 <div className="animate-fade-in space-y-12 max-w-4xl mx-auto">
+                    {!isPro && (
+                      <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
+                        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#367c92] mb-3">Plans</p>
+                        <h2 className="text-2xl font-black text-slate-800 mb-2 tracking-tighter">Keep creating work samples</h2>
+                        <p className="text-sm text-slate-600 leading-relaxed mb-8">You have {trialRemaining} free trial {trialRemaining === 1 ? 'match' : 'matches'} left. Pick a plan whenever you are ready.</p>
+                        <PlanCards onUpgrade={() => setShowPaywall(true)} />
+                      </div>
+                    )}
+
                     <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
                         <h2 className="text-2xl font-black text-slate-800 mb-6 uppercase tracking-tighter">How to use Align</h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
