@@ -93,7 +93,7 @@ const getAdminApp = () =>
     projectId: process.env.FIREBASE_PROJECT_ID || 'ca-homeschool-align'
   });
 
-const getDb = () => getFirestore(getAdminApp());
+export const getDb = () => getFirestore(getAdminApp());
 
 // Proves WHO is asking: turns the sign-in token the browser sends into the person's user id.
 // Throws if the token is missing, expired or fake.

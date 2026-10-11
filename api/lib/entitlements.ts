@@ -187,6 +187,18 @@ export const authorizeFollowup = async (store: Store, who: Who, limits: Limits, 
   });
 };
 
+// If the AI itself fails right after a free generation was counted, give that use back.
+export const refundGeneration = async (store: Store, who: Who, now: number): Promise<void> => {
+  await store.runTransaction(async tx => {
+    const trial = await tx.get(`trials/${who.uid}`);
+    if (!trial || (trial.used || 0) < 1) return;
+    const counterPath = `counters/free_${ymd(now)}`;
+    const counter = (await tx.get(counterPath)) || {};
+    tx.set(`trials/${who.uid}`, { used: trial.used - 1 }, true);
+    if ((counter.count || 0) > 0) tx.set(counterPath, { count: counter.count - 1 }, true);
+  });
+};
+
 // The Vault's "narrative summary" stays available after the trial, with a small daily limit.
 export const authorizeNarrative = async (store: Store, who: Who, limits: Limits, now: number): Promise<Decision> => {
   return store.runTransaction(async tx => {

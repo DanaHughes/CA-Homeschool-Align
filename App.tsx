@@ -11,12 +11,13 @@ import { WorkSampleFlow } from './components/WorkSampleFlow';
 import { PlanPage } from './components/PlanPage';
 import { PlanCards } from './components/PlanCards';
 import { AdminPaywallEditor } from './components/AdminPaywallEditor';
+import { VerifyEmailBanner } from './components/VerifyEmailBanner';
+import { TrialStatus, computeTrial, loadTrialStatus, trialSummary } from './services/trialService';
 import { DEFAULT_PAYWALL_TEXT, PaywallText, mergePaywallText } from './services/paywallText';
 import { InstallPrompt, InstallDirections } from './components/InstallPrompt';
 import { buildVaultPdf } from './services/vaultPdf';
 import { downloadBlob } from './services/pdfExport';
 
-const FREE_SEARCH_LIMIT = 25;
 const PRO_FREE_EMAILS = ['demo@cahomeschool.com', 'dana2andrea@gmail.com'];
 const APP_VERSION = "1.6.0"; 
 const BLUEPRINT_GUIDE_URL = "https://www.charterhomeschoolhelp.com/products/the-charter-homeschool-blueprint";
@@ -94,10 +95,12 @@ export default function App() {
 
   const [showPaywall, setShowPaywall] = useState(false);
   const [lowMatchesDismissed, setLowMatchesDismissed] = useState(false);
+  const [trial, setTrial] = useState<TrialStatus>(() => computeTrial(null, {}, Date.now()));
+  const [emailVerified, setEmailVerified] = useState(true);
   const [paywallText, setPaywallText] = useState<PaywallText>(DEFAULT_PAYWALL_TEXT);
   const [adminSection, setAdminSection] = useState<'messages' | 'payment'>('messages');
   const [paywallDraft, setPaywallDraft] = useState<PaywallText | null>(null);
-  const [paywallPreview, setPaywallPreview] = useState<{ text: PaywallText; trialRemaining: number } | null>(null);
+  const [paywallPreview, setPaywallPreview] = useState<{ text: PaywallText; trialRemaining: number; trialDaysLeft: number } | null>(null);
   const [pendingStandardToSave, setPendingStandardToSave] = useState<Standard | null>(null);
   const [showStudentSelectModal, setShowStudentSelectModal] = useState(false);
   const [pendingStripeSession, setPendingStripeSession] = useState<string | null>(() => {
@@ -172,6 +175,18 @@ export default function App() {
     });
   }, []);
 
+  // Free trial status (read-only here; the server counts and enforces it) and email verification.
+  const refreshTrial = async () => {
+    if (!user) return;
+    setTrial(await loadTrialStatus(user.id));
+  };
+  useEffect(() => {
+    if (!user?.id) return;
+    setEmailVerified(authService.getEmailVerified());
+    loadTrialStatus(user.id).then(setTrial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   // Load the words for the payment screen (Dana can change them in the Admin tab).
   useEffect(() => {
     if (!user?.id) return;
@@ -228,20 +243,21 @@ export default function App() {
         if (response.ok && data.paid && data.userId === user.id) {
           const pendingName =
             sessionStorage.getItem('pending_stripe_name') || data.userName || user.name;
-          // The server has already marked the account as Pro when "activated" is true.
-          // Only if that failed do we fall back to the older browser-side unlock.
-          if (!data.activated) {
-            await dbService.unlockUser(user.id, pendingName, `STRIPE_${pendingStripeSession}`);
-          }
-          setUser({
-            ...user,
-            isPaid: true,
-            name: pendingName,
-            accountTier: 'pro'
-          });
+          // Only the SERVER can mark an account as paid. If it could not do that right now, Stripe's own
+          // message to the server will finish the job shortly, so we ask the family to refresh.
           sessionStorage.removeItem('pending_stripe_name');
-          setShowPaywall(false);
-          setStripeStatusMessage('Payment confirmed. Your Beta License is now active.');
+          if (data.activated) {
+            setUser({
+              ...user,
+              isPaid: true,
+              name: pendingName,
+              accountTier: 'pro'
+            });
+            setShowPaywall(false);
+            setStripeStatusMessage('Payment confirmed. Your Beta License is now active.');
+          } else {
+            setStripeStatusMessage('Payment received. Your account is being activated. Please refresh this page in a minute. If it is still locked, use "Report a bug" in the FAQs and we will fix it right away.');
+          }
         } else if (response.ok && !data.paid) {
           setStripeStatusMessage('Payment is still processing. Please refresh in a moment.');
         } else {
@@ -749,7 +765,7 @@ export default function App() {
     }
 
     const isPro = user.isPaid || PRO_FREE_EMAILS.includes(user.email.toLowerCase());
-    if (!isPro && user.searchCount >= FREE_SEARCH_LIMIT) { 
+    if (!isPro && trial.over) { 
       setShowPaywall(true); 
       return; 
     }
@@ -789,10 +805,7 @@ export default function App() {
         excludeCodes
       );
       setSearchResults(results || []);
-      if (!isPro) {
-        const newCount = await dbService.incrementUserSearch(user.id);
-        setUser({ ...user, searchCount: newCount });
-      }
+      if (!isPro) await refreshTrial();
     } catch (e: any) {
       console.error("Search Error:", e);
       const msg = String(e?.message || '');
@@ -818,7 +831,7 @@ export default function App() {
     const canIncludeMatchLogic =
       user.isPaid ||
       PRO_FREE_EMAILS.includes(user.email.toLowerCase()) ||
-      user.searchCount < FREE_SEARCH_LIMIT;
+      !trial.over;
 
     try {
       // ✅ PERFORMANCE FIX: Generate match logic on-demand (not during search)
@@ -871,11 +884,10 @@ export default function App() {
     }
   };
 
-  // Used by the Work Sample screens: counts one free-trial use after a successful generate.
+  // Used by the Work Sample screens after a generation: refreshes the free-trial counter.
   const countWorkSampleUse = async () => {
-    if (!user) return;
-    const newCount = await dbService.incrementUserSearch(user.id);
-    setUser({ ...user, searchCount: newCount });
+    // The SERVER counts the free generation. This just re-reads how many are left.
+    await refreshTrial();
   };
 
   // Used by the Work Sample screens: saves the text record to the Vault without leaving the page.
@@ -1084,8 +1096,8 @@ export default function App() {
 
   const activeViewingStudent = students.find(s => s.id === viewingStudentId);
   const isPro = user?.isPaid || (user && PRO_FREE_EMAILS.includes(user.email.toLowerCase()));
-  const hasProAccess = isPro || (user && user.searchCount < FREE_SEARCH_LIMIT);
-  const trialRemaining = Math.max(0, FREE_SEARCH_LIMIT - (user?.searchCount || 0));
+  const hasProAccess = isPro || !trial.over;
+  const trialRemaining = trial.over ? 0 : trial.remaining;
   const isComplimentary = !!user && PRO_FREE_EMAILS.includes(user.email.toLowerCase());
 
   if (isAppLoading) return null;
@@ -1095,6 +1107,7 @@ export default function App() {
     user={user}
     text={paywallPreview.text}
     trialRemaining={paywallPreview.trialRemaining}
+    trialDaysLeft={paywallPreview.trialDaysLeft}
     previewMode
     onUnlock={() => {}}
     onCancel={() => setPaywallPreview(null)}
@@ -1104,12 +1117,7 @@ export default function App() {
     user={user}
     text={paywallText}
     trialRemaining={trialRemaining}
-    onUnlock={(name, code) => {
-      dbService.unlockUser(user.id, name, code).then(() => {
-        setUser({ ...user, isPaid: true, name: name, accountTier: 'pro' });
-        setShowPaywall(false);
-      });
-    }}
+    trialDaysLeft={trial.daysLeft}
     onCancel={() => setShowPaywall(false)}
   />;
 
@@ -1834,7 +1842,7 @@ export default function App() {
                 className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all duration-300 ${activeTab === 'search' ? 'text-[#e7b64f] scale-110' : 'text-slate-500 opacity-60'}`}
             >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                <span className="text-[8px] font-black uppercase tracking-widest">Match</span>
+                <span className="text-[8px] font-black uppercase tracking-widest">Generate</span>
             </button>
             <button 
                 onClick={() => { 
@@ -1864,7 +1872,7 @@ export default function App() {
                 className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all duration-300 ${activeTab === 'plan' ? 'text-[#e7b64f] scale-110' : !isPro ? 'text-[#e7b64f]' : 'text-slate-500 opacity-60'}`}
             >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                <span className="text-[8px] font-black uppercase tracking-widest">{isPro ? 'My Plan' : 'Upgrade'}</span>
+                <span className="text-[8px] font-black uppercase tracking-widest">{isPro ? 'My Account' : 'Upgrade'}</span>
             </button>
             {user?.email === ADMIN_EMAIL && (
               <button
@@ -1888,7 +1896,7 @@ export default function App() {
                       {isPro && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[8px] font-black uppercase rounded-md tracking-widest ring-1 ring-emerald-200">Pro</span>}
                    </div>
                    <span className="text-[8px] font-black uppercase tracking-[0.15em] text-slate-400">
-                    v{APP_VERSION} • {isPro ? 'Beta License Active' : `${trialRemaining} Trial Matches Remaining`}
+                    v{APP_VERSION} • {isPro ? 'Beta License Active' : trialSummary(trial)}
                    </span>
                 </div>
             </div>
@@ -1896,7 +1904,7 @@ export default function App() {
                <button onClick={() => { 
                  setActiveTab('search'); 
                  setViewingStudentId(null);
-               }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'search' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Match</button>
+               }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'search' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Generate</button>
                <button onClick={() => { 
                  setActiveTab('students'); 
                  setViewingStudentId(null);
@@ -1908,7 +1916,7 @@ export default function App() {
                <button onClick={() => {
                  setActiveTab('plan');
                  setViewingStudentId(null);
-               }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'plan' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>My Plan</button>
+               }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'plan' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>My Account</button>
                {!isPro && (
                  <button onClick={() => setShowPaywall(true)} className="px-5 py-2.5 rounded-full bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 text-[10px] font-black uppercase tracking-[0.2em] shadow-md hover:brightness-105 active:scale-95 transition-all">Upgrade</button>
                )}
@@ -1931,10 +1939,24 @@ export default function App() {
       {user && <InstallPrompt />}
 
       <main className="flex-grow max-w-7xl mx-auto px-6 py-12 w-full z-10 mb-20">
-            {activeTab === 'search' && user && !isPro && trialRemaining > 0 && trialRemaining <= 5 && !lowMatchesDismissed && (
+            {user && !isPro && !emailVerified && (
+              <VerifyEmailBanner
+                email={user.email}
+                onResend={authService.resendVerification}
+                onCheck={async () => {
+                  const verified = await authService.refreshVerification();
+                  setEmailVerified(verified);
+                  return verified;
+                }}
+              />
+            )}
+
+            {activeTab === 'search' && user && !isPro && emailVerified && !lowMatchesDismissed && (trial.over || (trial.started && (trial.remaining <= 2 || trial.daysLeft <= 2))) && (
               <div className="max-w-4xl mx-auto mb-8 bg-[#fddc96]/40 border border-[#e7b64f]/40 rounded-[2rem] px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 animate-fade-in no-print">
                 <p className="flex-grow text-[11px] font-black uppercase tracking-widest text-slate-700">
-                  {trialRemaining} trial {trialRemaining === 1 ? 'match' : 'matches'} left
+                  {trial.over
+                    ? 'Your free trial has ended. Your Vault and PDF export still work.'
+                    : `${trial.remaining} free ${trial.remaining === 1 ? 'generation' : 'generations'} left · ${trial.daysLeft} ${trial.daysLeft === 1 ? 'day' : 'days'} left`}
                 </p>
                 <button onClick={() => setShowPaywall(true)} className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 text-[10px] font-black uppercase tracking-[0.2em] shadow-md hover:brightness-105 active:scale-95 transition-all">See plans</button>
                 <button onClick={() => setLowMatchesDismissed(true)} aria-label="Dismiss" className="text-slate-400 hover:text-slate-600 text-lg leading-none font-black px-2">×</button>
@@ -1946,7 +1968,7 @@ export default function App() {
                 user={user}
                 isPro={!!isPro}
                 isComplimentary={isComplimentary}
-                trialRemaining={trialRemaining}
+                trial={trial}
                 onUpgrade={() => setShowPaywall(true)}
               />
             )}
@@ -1957,7 +1979,7 @@ export default function App() {
                 students={students}
                 records={records}
                 isPro={!!isPro}
-                freeLimit={FREE_SEARCH_LIMIT}
+                trialOver={trial.over}
                 onNeedPaywall={() => setShowPaywall(true)}
                 onSearchUsed={countWorkSampleUse}
                 onAddStudent={() => { handleAddNewStudent(); }}
@@ -2163,7 +2185,7 @@ export default function App() {
                     draft={paywallDraft ?? paywallText}
                     onDraftChange={setPaywallDraft}
                     onSave={async (text) => { await dbService.setPaywallText({ ...text }); setPaywallText(text); setPaywallDraft(null); }}
-                    onPreview={(text, remaining) => setPaywallPreview({ text, trialRemaining: remaining })}
+                    onPreview={(text, remaining) => setPaywallPreview({ text, trialRemaining: remaining, trialDaysLeft: 7 })}
                   />
                 )}
                 {adminSection === 'messages' && (<>
@@ -2207,7 +2229,7 @@ export default function App() {
                       <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
                         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#367c92] mb-3">Plans</p>
                         <h2 className="text-2xl font-black text-slate-800 mb-2 tracking-tighter">Keep creating work samples</h2>
-                        <p className="text-sm text-slate-600 leading-relaxed mb-8">You have {trialRemaining} free trial {trialRemaining === 1 ? 'match' : 'matches'} left. Pick a plan whenever you are ready.</p>
+                        <p className="text-sm text-slate-600 leading-relaxed mb-8">{trial.over ? 'Your free trial has ended. Your saved work and PDF export stay yours.' : trial.started ? `You have ${trial.remaining} free ${trial.remaining === 1 ? 'generation' : 'generations'} available for the next ${trial.daysLeft} ${trial.daysLeft === 1 ? 'day' : 'days'}.` : `You have ${trial.generations} free generations available for ${trial.days} days, starting with your first one.`} Pick a plan whenever you are ready.</p>
                         <PlanCards onUpgrade={() => setShowPaywall(true)} />
                       </div>
                     )}

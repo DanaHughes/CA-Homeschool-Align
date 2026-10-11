@@ -25,15 +25,6 @@ export const dbService = {
     });
   },
 
-  incrementUserSearch: async (userId: string): Promise<number> => {
-    const userRef = firestore.doc(db, 'users', userId);
-    await firestore.updateDoc(userRef, {
-      searchCount: firestore.increment(1)
-    });
-    const snap = await firestore.getDoc(userRef);
-    return snap.data()?.searchCount || 0;
-  },
-
   updateReviewStatus: async (userId: string): Promise<void> => {
     const userRef = firestore.doc(db, 'users', userId);
     await firestore.updateDoc(userRef, { hasReviewed: true });
@@ -78,17 +69,6 @@ export const dbService = {
 
   setPaywallText: async (text: Record<string, string>): Promise<void> => {
     await firestore.setDoc(firestore.doc(db, 'settings', 'paywall'), { ...text, updatedAt: Date.now() });
-  },
-
-  unlockUser: async (userId: string, name: string, code: string): Promise<void> => {
-    const userRef = firestore.doc(db, 'users', userId);
-    await firestore.updateDoc(userRef, {
-      accountTier: 'pro',
-      isPaid: true,
-      paidAt: Date.now(),
-      accessCodeUsed: code,
-      name: name 
-    });
   },
 
   getStudents: async (userId: string): Promise<Student[]> => {

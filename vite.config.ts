@@ -10,7 +10,6 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     define: {
       // NOTE: The Gemini API key is deliberately NOT exposed here. It is read on the server only (api/gemini.ts).
-      'process.env.VITE_ACCESS_CODE': JSON.stringify(env.VITE_ACCESS_CODE || 'TEACH2024'),
       // Remove the || env.API_KEY fallback to prevent Firebase from using Gemini keys
       'process.env.VITE_FIREBASE_API_KEY': JSON.stringify(env.VITE_FIREBASE_API_KEY),
       'process.env.VITE_FIREBASE_AUTH_DOMAIN': JSON.stringify(env.VITE_FIREBASE_AUTH_DOMAIN),

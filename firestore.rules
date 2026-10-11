@@ -17,9 +17,27 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.token.email == 'dana2andrea@gmail.com';
     }
 
-    // Users collection - users can read/update their own user document
+    // Users collection - a person may read and update their own record, but may NOT change anything that
+    // decides who has paid or how much free use they have. Only the server (which skips these rules) does that.
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+        request.resource.data.isPaid == false &&
+        request.resource.data.accountTier == 'free' &&
+        request.resource.data.subscriptionPlan == 'none' &&
+        !request.resource.data.keys().hasAny(['proUntil', 'paidAt', 'accessCodeUsed', 'stripeCustomerId', 'stripeSubscriptionId']);
+      allow update: if isOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'isPaid', 'accountTier', 'paidAt', 'accessCodeUsed', 'subscriptionPlan',
+          'stripeCustomerId', 'stripeSubscriptionId', 'proUntil', 'searchCount', 'trialStartedAt'
+        ]);
+      allow delete: if isOwner(userId);
+    }
+
+    // Free trial records: written only by the server. Each person may read their own to see what is left.
+    match /trials/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if false;
     }
     
     // Students collection - users can only access their own students

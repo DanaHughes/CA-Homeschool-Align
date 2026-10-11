@@ -26,20 +26,17 @@ export const authService = {
         if (userDoc.exists()) {
           let userData = userDoc.data() as User;
           
-          // Ensure designated accounts are always pro
+          // Designated accounts always have Pro. This is decided here (and on the server) from the
+          // email list; it is NOT saved to the database, because only the server may change paid status.
           if (isProFreeEmail(userData.email)) {
             let finalName = userData.name;
             if (userData.email.toLowerCase() === 'dana2andrea@gmail.com') finalName = "Dana Hughes";
             if (userData.email.toLowerCase() === 'demo@cahomeschool.com') finalName = "Demo Educator";
-            
-            if (!userData.isPaid || userData.accountTier !== 'pro' || userData.name !== finalName) {
-              await firestore.updateDoc(firestore.doc(db, 'users', firebaseUser.uid), {
-                isPaid: true,
-                accountTier: 'pro',
-                name: finalName
-              });
-              userData = { ...userData, isPaid: true, accountTier: 'pro', name: finalName };
+
+            if (userData.name !== finalName) {
+              await firestore.updateDoc(firestore.doc(db, 'users', firebaseUser.uid), { name: finalName });
             }
+            userData = { ...userData, isPaid: true, accountTier: 'pro', name: finalName };
           }
           callback(userData);
         } else {
@@ -65,13 +62,9 @@ export const authService = {
         if (userData.email.toLowerCase() === 'dana2andrea@gmail.com') finalName = "Dana Hughes";
         if (userData.email.toLowerCase() === 'demo@cahomeschool.com') finalName = "Demo Educator";
         
-        // Ensure designated accounts are always pro - persist to Firestore
-        if (!userData.isPaid || userData.accountTier !== 'pro' || userData.name !== finalName) {
-          await firestore.updateDoc(firestore.doc(db, 'users', firebaseUser.uid), {
-            isPaid: true,
-            accountTier: 'pro',
-            name: finalName
-          });
+        // Designated accounts always have Pro; decided from the email list, never saved from the browser.
+        if (userData.name !== finalName) {
+          await firestore.updateDoc(firestore.doc(db, 'users', firebaseUser.uid), { name: finalName });
         }
         userData = { ...userData, isPaid: true, accountTier: 'pro', name: finalName };
       }
@@ -89,9 +82,9 @@ export const authService = {
         name: finalName,
         email: email.toLowerCase(),
         trialStartedAt: Date.now(),
-        isPaid: isProFree,
+        isPaid: false,
         searchCount: 0,
-        accountTier: isProFree ? 'pro' : 'free',
+        accountTier: 'free',
         subscriptionPlan: 'none',
         consents: {
           terms: true,
@@ -99,9 +92,9 @@ export const authService = {
           facebook: false
         }
       };
-      
+
       await firestore.setDoc(firestore.doc(db, 'users', firebaseUser.uid), newUser);
-      return newUser;
+      return isProFree ? { ...newUser, isPaid: true, accountTier: 'pro' } : newUser;
     }
   },
 
@@ -129,16 +122,16 @@ export const authService = {
         name: finalName,
         email: email.toLowerCase(),
         trialStartedAt: Date.now(),
-        isPaid: isProFree,
+        isPaid: false,
         searchCount: 0,
-        accountTier: isProFree ? 'pro' : 'free',
+        accountTier: 'free',
         subscriptionPlan: 'none',
         consents
       };
 
       // Use namespace access for Firestore methods
       await firestore.setDoc(firestore.doc(db, 'users', firebaseUser.uid), newUser);
-      return newUser;
+      return isProFree ? { ...newUser, isPaid: true, accountTier: 'pro' } : newUser;
     } catch (error: any) {
       // If email already in use, try to login instead and create Firestore doc if missing
       if (error.code === 'auth/email-already-in-use') {
@@ -154,6 +147,26 @@ export const authService = {
       }
       throw error;
     }
+  },
+
+  // Email verification (the free trial needs a verified email).
+  getEmailVerified: (): boolean => {
+    const current = auth.currentUser;
+    return current ? current.emailVerified === true : true;
+  },
+
+  resendVerification: async (): Promise<void> => {
+    if (!auth.currentUser) throw new Error('NOT_LOGGED_IN');
+    await sendEmailVerification(auth.currentUser);
+  },
+
+  // Re-reads the account from Firebase so a just-clicked verification link is noticed.
+  refreshVerification: async (): Promise<boolean> => {
+    const current = auth.currentUser;
+    if (!current) return false;
+    await current.reload();
+    await current.getIdToken(true);
+    return current.emailVerified === true;
   },
 
   logout: async () => {

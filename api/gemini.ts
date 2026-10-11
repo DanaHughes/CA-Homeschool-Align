@@ -17,6 +17,8 @@
 
 import { GoogleGenAI, Type } from '@google/genai';
 import { writingExpectation } from '../services/gradeExpectations';
+import { authorizeFollowup, authorizeGeneration, authorizeNarrative, refundGeneration, Decision, Who } from './lib/entitlements.js';
+import { adminStore, getLimits } from './lib/entitlementsStore.js';
 
 const MODEL_NAME = 'gemini-3-flash-preview';
 
@@ -132,7 +134,7 @@ let dayCount = 0;
 const str = (v: unknown, max: number): string =>
   typeof v === 'string' ? v.slice(0, max) : '';
 
-async function verifyFirebaseToken(idToken: string): Promise<string | null> {
+async function verifyFirebaseToken(idToken: string): Promise<Who | null> {
   try {
     const r = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`,
@@ -144,7 +146,9 @@ async function verifyFirebaseToken(idToken: string): Promise<string | null> {
     );
     if (!r.ok) return null;
     const data: any = await r.json();
-    return data?.users?.[0]?.localId || null;
+    const u = data?.users?.[0];
+    if (!u?.localId) return null;
+    return { uid: u.localId, email: String(u.email || ''), emailVerified: u.emailVerified === true };
   } catch {
     return null;
   }
@@ -184,10 +188,11 @@ export default async function handler(req: any, res: any) {
   // 1. Only signed-in users may use the AI.
   const authHeader = String(req.headers.authorization || '');
   const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  const uid = idToken ? await verifyFirebaseToken(idToken) : null;
-  if (!uid) {
+  const who = idToken ? await verifyFirebaseToken(idToken) : null;
+  if (!who) {
     return res.status(401).json({ error: 'Please log in again.' });
   }
+  const uid = who.uid;
 
   // 2. Safety limits.
   const limit = checkLimits(uid);
@@ -199,6 +204,31 @@ export default async function handler(req: any, res: any) {
   }
 
   const body = req.body || {};
+
+  // 3. Who may use the AI, and how much (free trial, access, safety limits). Runs on the server so it
+  //    cannot be changed from a browser. A "search" starts a generation; the steps that follow it are
+  //    allowed only right after one. If the check itself fails we refuse, never allow.
+  const action = String(body.action || '');
+  let freeUseCounted = false;
+  if (['search', 'explain', 'explainMany', 'workpage', 'narrative'].includes(action)) {
+    let decision: Decision;
+    try {
+      const limits = await getLimits();
+      const now = Date.now();
+      decision =
+        action === 'search' ? await authorizeGeneration(adminStore, who, limits, now)
+        : action === 'narrative' ? await authorizeNarrative(adminStore, who, limits, now)
+        : await authorizeFollowup(adminStore, who, limits, now);
+    } catch (e: any) {
+      console.error('[Gemini] Could not check access:', e?.message || e);
+      return res.status(503).json({ error: 'SERVICE_UNAVAILABLE' });
+    }
+    if (decision.ok === false) {
+      return res.status(403).json({ error: (decision as { code: string }).code });
+    }
+    freeUseCounted = action === 'search' && decision.pro === false;
+  }
+
   const ai = new GoogleGenAI({ apiKey });
 
   try {
@@ -352,6 +382,10 @@ Write the words for two possible page layouts:
     return res.status(400).json({ error: 'Unknown action' });
   } catch (error: any) {
     console.error('[Gemini] Error:', error);
+    // The family should not lose a free generation because the AI had a problem.
+    if (freeUseCounted) {
+      try { await refundGeneration(adminStore, who, Date.now()); } catch (e) { console.error('[Gemini] Could not refund the free use:', e); }
+    }
     return res.status(500).json({ error: 'The AI service had a problem. Please try again.' });
   }
 }
