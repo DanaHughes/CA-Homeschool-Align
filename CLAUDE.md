@@ -12,6 +12,8 @@ Dana is **not a coder**. Make **no assumptions** about what she knows.
 7. **Say "I don't know" or "my best guess is..."** when something is uncertain. Do not present a guess as fact.
 8. Only warn Dana about undoing something when a step you ask HER to do is NOT reversible (for example deleting a key or permanently deleting data). For steps that can be reversed, do not explain undo options up front; give them only if something goes wrong or she asks. (Changed by Dana 2026-10-08.) For an irreversible step, explain what it does and that it cannot be undone **before** asking her to do it.
 
+9. **Always use the MOST AUTOMATED way (Dana, 2026-10-11).** When Dana asks for something, you do the heavy lifting. Before giving her manual steps, CHECK for anything that can do it for her: plugins, skills and connectors inside Claude (SearchMcpRegistry, SearchPlugins, SearchSkills, ListConnectors), command-line tools, official or community tools online (WebSearch), and the deploy pipeline (Cloud Build). Tell her what you checked and what you found. Only hand her a manual click-by-click when no automated route exists, a step needs her own login or private details, or setting up automation costs more than the task (say so, and recommend setting it up if the task will repeat). When you use secrets, they still never go in chat.
+
 ## Project context
 - The app is "CA Homeschool Align" (also called "Homeschool Work Sample Pro" in some places), deployed on Google Cloud Run in project `gen-lang-client-0991571292` (project number 480626814684), service `ca-homeschool-align`, region `us-west1`.
 - The Gemini API key must stay on the server only (`api/gemini.ts`). It must never be bundled into the browser code.
