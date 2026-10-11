@@ -43,7 +43,7 @@ const simplifyForPdf = (live: HTMLElement, clone: HTMLElement): void => {
       border: '0',
       borderBottom: cs.borderBottom
     });
-    if (src.classList.contains('ws-write')) {
+    if (src.classList.contains('ws-write') && !src.classList.contains('typed')) {
       const lh = parseFloat(cs.lineHeight) || 24;
       if (src.classList.contains('primary')) {
         div.style.backgroundImage = `${ruledBackground(lh, '#9aa3af')}, ${ruledBackground(lh / 2, '#cbd2da')}`;
