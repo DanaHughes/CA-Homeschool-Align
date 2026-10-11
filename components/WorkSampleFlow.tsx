@@ -826,7 +826,8 @@ export const WorkSampleFlow: React.FC<Props> = ({
           </div>
 
           <div className="no-print flex flex-wrap items-center gap-2 mb-6" role="group" aria-label="Page tools">
-            <button type="button" onClick={() => fileRef.current?.click()} className={toolClass(false)}>Add a photo</button>
+            <button type="button" onClick={() => fileRef.current?.click()} className={toolClass(false)}>{photo ? 'Choose a different photo' : 'Add a photo'}</button>
+            {photo && <button type="button" onClick={() => setPhoto(null)} className={toolClass(false)}>Remove photo</button>}
             <button type="button" aria-pressed={tool === 'pen'} onClick={() => setTool(tool === 'pen' ? 'none' : 'pen')} className={toolClass(tool === 'pen')}>Draw</button>
             <button type="button" aria-pressed={tool === 'erase'} onClick={() => setTool(tool === 'erase' ? 'none' : 'erase')} className={toolClass(tool === 'erase')}>Eraser</button>
             <span className="inline-flex items-center gap-2 px-2" role="group" aria-label="Pen color">
