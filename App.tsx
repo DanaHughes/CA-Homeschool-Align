@@ -12,6 +12,7 @@ import { PlanPage } from './components/PlanPage';
 import { PlanCards } from './components/PlanCards';
 import { AdminPaywallEditor } from './components/AdminPaywallEditor';
 import { AdminCodes } from './components/AdminCodes';
+import { BlueprintPopup } from './components/BlueprintPopup';
 import { AdminTextEditor } from './components/AdminTextEditor';
 import { AdminStartHereEditor } from './components/AdminStartHereEditor';
 import { RichText } from './components/RichText';
@@ -109,6 +110,7 @@ export default function App() {
   const [siteTextDraft, setSiteTextDraft] = useState<SiteText | null>(null);
   const [startHereDraft, setStartHereDraft] = useState<StartHereContent | null>(null);
   const siteText = useSiteText();
+  const [showBlueprintPopup, setShowBlueprintPopup] = useState(false);
   const startHereContent = useStartHere(!!user);
   const [paywallDraft, setPaywallDraft] = useState<PaywallText | null>(null);
   const [paywallPreview, setPaywallPreview] = useState<{ text: PaywallText; trialRemaining: number; trialDaysLeft: number } | null>(null);
@@ -1135,11 +1137,31 @@ export default function App() {
     trialRemaining={trialRemaining}
     trialDaysLeft={trial.daysLeft}
     onCodeRedeemed={handleCodeRedeemed}
-    onCancel={() => setShowPaywall(false)}
+    onCancel={() => {
+      setShowPaywall(false);
+      // Once per visit, offer the Blueprint e-book to families who leave without subscribing.
+      try {
+        if (!sessionStorage.getItem('blueprint_popup_shown')) {
+          sessionStorage.setItem('blueprint_popup_shown', '1');
+          setShowBlueprintPopup(true);
+        }
+      } catch {
+        setShowBlueprintPopup(true);
+      }
+    }}
   />;
 
   return (
     <div className="min-h-screen flex flex-col font-sans relative pb-32 md:pb-0">
+      {showBlueprintPopup && !isPro && (
+        <BlueprintPopup
+          text={siteText.exitPopupText}
+          buttonText={siteText.exitPopupButton}
+          closeText={siteText.exitPopupClose}
+          url={siteText.blueprintUrl}
+          onClose={() => setShowBlueprintPopup(false)}
+        />
+      )}
       {stripeStatusMessage && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[2000] max-w-md w-[92%] no-print">
           <div className="bg-white border border-[#81adb3]/30 shadow-2xl rounded-3xl px-6 py-4 flex items-start gap-3 animate-fade-in">
@@ -1822,9 +1844,6 @@ export default function App() {
                     </div>
                     
                     <div className="pt-6 flex flex-col items-center">
-                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-4 text-center max-w-md">
-                            {siteText.blueprintLine} <a href={siteText.blueprintUrl} target="_blank" rel="noopener noreferrer" className="text-[#81adb3] font-black hover:underline underline-offset-2">{siteText.blueprintLinkText}</a>.
-                        </p>
                         <button onClick={() => setShowExportModal(false)} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">Cancel</button>
                     </div>
                 </div>
