@@ -191,7 +191,11 @@ export default function App() {
         if (response.ok && data.paid && data.userId === user.id) {
           const pendingName =
             sessionStorage.getItem('pending_stripe_name') || data.userName || user.name;
-          await dbService.unlockUser(user.id, pendingName, `STRIPE_${pendingStripeSession}`);
+          // The server has already marked the account as Pro when "activated" is true.
+          // Only if that failed do we fall back to the older browser-side unlock.
+          if (!data.activated) {
+            await dbService.unlockUser(user.id, pendingName, `STRIPE_${pendingStripeSession}`);
+          }
           setUser({
             ...user,
             isPaid: true,

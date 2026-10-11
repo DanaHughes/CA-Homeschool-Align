@@ -8,6 +8,13 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = parseInt(process.env.PORT || '8080');
 
+// Stripe's webhook needs the raw, untouched body to prove the message is really from Stripe,
+// so this route is registered BEFORE the JSON reader below.
+app.post('/api/stripe-webhook', express.raw({ type: 'application/json', limit: '2mb' }), async (req, res) => {
+  const handler = (await import('./api/stripe-webhook.js')).default;
+  return handler(req, res);
+});
+
 // Large limit so photo uploads (sent as base64) fit in one request.
 app.use(express.json({ limit: '15mb' }));
 
