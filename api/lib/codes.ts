@@ -13,6 +13,7 @@ import type { Store } from './entitlements.js';
 
 export type CodeError =
   | 'BAD_INPUT'
+  | 'USES_BELOW_USED'
   | 'CODE_EXISTS'
   | 'CODE_NOT_FOUND'
   | 'CODE_OFF'
@@ -121,6 +122,42 @@ export const redeemCode = async (store: Store, who: CodeWho, raw: unknown, now: 
   });
 };
 
+export interface CodePatch {
+  months?: number;
+  maxUses?: number;
+  note?: string;
+}
+
+// Dana edits a code: free months, how many families may use it, and the note.
+// Changing the months only affects families who use the code from now on; people who already
+// used it keep the time they were given. The number of families can never go below how many already used it.
+export const updateCode = async (
+  store: Store,
+  raw: unknown,
+  patch: CodePatch
+): Promise<{ ok: true } | { ok: false; error: CodeError; uses?: number }> => {
+  const id = normalizeCode(raw);
+  return store.runTransaction(async tx => {
+    const code = await tx.get(`codes/${id}`);
+    if (!code) return { ok: false, error: 'CODE_NOT_FOUND' } as const;
+    const update: Record<string, unknown> = {};
+    if (patch.months !== undefined) {
+      const months = Math.floor(Number(patch.months));
+      if (!Number.isFinite(months) || months < 1 || months > 60) return { ok: false, error: 'BAD_INPUT' } as const;
+      update.months = months;
+    }
+    if (patch.maxUses !== undefined) {
+      const maxUses = Math.floor(Number(patch.maxUses));
+      if (!Number.isFinite(maxUses) || maxUses < 1 || maxUses > 100000) return { ok: false, error: 'BAD_INPUT' } as const;
+      if (maxUses < (code.uses || 0)) return { ok: false, error: 'USES_BELOW_USED', uses: code.uses || 0 } as const;
+      update.maxUses = maxUses;
+    }
+    if (patch.note !== undefined) update.note = String(patch.note).slice(0, 200);
+    tx.set(`codes/${id}`, update, true);
+    return { ok: true } as const;
+  });
+};
+
 // Words shown to the family (and to Dana) for each problem.
 export const codeErrorMessage = (error: CodeError): string => {
   switch (error) {
@@ -128,6 +165,7 @@ export const codeErrorMessage = (error: CodeError): string => {
     case 'CODE_OFF': return 'That code is no longer active.';
     case 'CODE_RAN_OUT': return 'I am sorry, that code has run out.';
     case 'CODE_ALREADY_USED_BY_YOU': return 'You have already used that code on this account.';
+    case 'USES_BELOW_USED': return 'The number of families cannot be lower than the number who already used the code. To stop new families, use Turn off.';
     case 'CODE_EXISTS': return 'A code with that name already exists. Please pick a different one.';
     default: return 'Please check the number of months (1 to 60), the number of families (1 or more), and the code (4 to 24 letters or numbers).';
   }

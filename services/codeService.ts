@@ -38,3 +38,9 @@ export const createPromoCode = async (input: { code?: string; months: number; ma
 export const setPromoCodeActive = async (code: string, active: boolean): Promise<void> => {
   await call({ action: 'setActive', code, active });
 };
+export const updatePromoCode = async (
+  code: string,
+  changes: { months?: number; maxUses?: number; note?: string; newCode?: string }
+): Promise<void> => {
+  await call({ action: 'update', code, ...changes });
+};

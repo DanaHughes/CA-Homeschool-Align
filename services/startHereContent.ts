@@ -3,8 +3,6 @@
 // If nothing is saved, these original words are used.
 // In any text: **double stars** make bold, and [words](https://address) make a link.
 
-import { BLUEPRINT_URL } from './siteText';
-
 export interface StartStep { title: string; body: string }
 export interface StartFaq { q: string; a: string }
 export interface StartHereContent { steps: StartStep[]; faqs: StartFaq[] }
@@ -24,10 +22,6 @@ export const DEFAULT_START_HERE: StartHereContent = {
     {
       q: 'Is my student data private?',
       a: 'Yes. All student data is stored in your private, encrypted account vault. We do not sell or share student identifiers with third parties, districts, or government agencies. Your data is for your exclusive record-keeping use only. Zero-reporting guarantee active.'
-    },
-    {
-      q: 'How do I turn this into charter-approved work samples?',
-      a: `The work sample options provided by this tool are a starting point. To create charter-compliant work samples, check out our comprehensive Charter Homeschool Blueprint: [The Charter Homeschool Blueprint](${BLUEPRINT_URL}). This guide shows you how to document learning in formats your charter will accept.`
     }
   ]
 };

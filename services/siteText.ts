@@ -41,14 +41,19 @@ export const TEXT_DEFS: TextDef[] = [
   { key: 'coveredTag', group: 'Student Vault', label: 'Tag when a standard repeats', help: 'Type {n} where the number of times should appear.', rows: 1, limit: 40, fallback: 'Covered {n}x' },
   { key: 'includeLogicLabel', group: 'Student Vault', label: 'Export checkbox', help: 'The checkbox on the Vault export screen.', rows: 1, limit: 100, fallback: 'Include "how the activity covered the standard"' },
   { key: 'csvLogicHeading', group: 'Student Vault', label: 'Spreadsheet (CSV) column heading', help: 'The last column heading in the Vault spreadsheet export.', rows: 1, limit: 80, fallback: 'How the Activity Covered the Standard' },
-  { key: 'blueprintLine', group: 'Student Vault', label: 'Line near the export', help: 'Shown above the Blueprint link on the Vault export screen.', rows: 2, limit: 200, fallback: 'Need help turning your learning activities into charter-approved work samples?' },
-  { key: 'blueprintLinkText', group: 'Student Vault', label: 'Blueprint link words', help: 'The clickable words after that line.', rows: 1, limit: 100, fallback: 'Check out our comprehensive Charter Homeschool Blueprint' },
+
+  {
+    key: 'exitPopupText', group: 'Pop-up when someone leaves the payment screen', label: 'Pop-up words', help: 'Shown once per visit, when a family closes the payment screen without subscribing. The button below opens your Blueprint page (set its web address under "Web addresses").', rows: 6, limit: 700,
+    fallback: 'Not ready to purchase an ongoing subscription? That\'s okay, we make something for everyone! Our e-book called "The Charter Homeschool Blueprint" walks homeschool parents through step by step showing how you can create a standard aligned work sample from any real-life activity.'
+  },
+  { key: 'exitPopupButton', group: 'Pop-up when someone leaves the payment screen', label: 'Button words', help: 'The main button. It opens the Blueprint page.', rows: 1, limit: 60, fallback: 'Get the Blueprint' },
+  { key: 'exitPopupClose', group: 'Pop-up when someone leaves the payment screen', label: 'Close words', help: 'The small link that closes the pop-up.', rows: 1, limit: 60, fallback: 'No thanks' },
 
   { key: 'headerByline', group: 'Header and footer', label: 'Small line under the app name', help: 'Links to your website.', rows: 1, limit: 80, fallback: 'by Charter Homeschool Help' },
   { key: 'footerLine', group: 'Header and footer', label: 'Footer line', help: 'The year and the copyright symbol are added in front for you.', rows: 1, limit: 120, fallback: 'Charter Homeschool Help | All Rights Reserved' },
 
   { key: 'websiteUrl', group: 'Web addresses', label: 'Your website', help: 'Where the logo, the "by" line and the footer go. Must start with https://', rows: 1, limit: 300, isLink: true, fallback: WEBSITE_URL },
-  { key: 'blueprintUrl', group: 'Web addresses', label: 'Charter Homeschool Blueprint page', help: 'Where the Blueprint links go. Must start with https://', rows: 1, limit: 300, isLink: true, fallback: BLUEPRINT_URL }
+  { key: 'blueprintUrl', group: 'Web addresses', label: 'Charter Homeschool Blueprint page', help: 'Where the pop-up button goes. Must start with https://', rows: 1, limit: 300, isLink: true, fallback: BLUEPRINT_URL }
 ];
 
 export type SiteText = Record<string, string>;
