@@ -12,6 +12,12 @@ import { PlanPage } from './components/PlanPage';
 import { PlanCards } from './components/PlanCards';
 import { AdminPaywallEditor } from './components/AdminPaywallEditor';
 import { AdminCodes } from './components/AdminCodes';
+import { AdminTextEditor } from './components/AdminTextEditor';
+import { AdminStartHereEditor } from './components/AdminStartHereEditor';
+import { RichText } from './components/RichText';
+import { useSiteText, useStartHere, applySiteText, applyStartHere } from './services/siteContent';
+import { SiteText, fillCount } from './services/siteText';
+import { StartHereContent } from './services/startHereContent';
 import { hasCodeAccess } from './services/accessHelpers';
 import { VerifyEmailBanner } from './components/VerifyEmailBanner';
 import { TrialStatus, computeTrial, loadTrialStatus, trialSummary } from './services/trialService';
@@ -22,7 +28,6 @@ import { downloadBlob } from './services/pdfExport';
 
 const PRO_FREE_EMAILS = ['demo@cahomeschool.com', 'dana2andrea@gmail.com'];
 const APP_VERSION = "1.6.0"; 
-const BLUEPRINT_GUIDE_URL = "https://www.charterhomeschoolhelp.com/products/the-charter-homeschool-blueprint";
 
 const ADMIN_EMAIL = 'dana2andrea@gmail.com';
 
@@ -100,7 +105,11 @@ export default function App() {
   const [trial, setTrial] = useState<TrialStatus>(() => computeTrial(null, {}, Date.now()));
   const [emailVerified, setEmailVerified] = useState(true);
   const [paywallText, setPaywallText] = useState<PaywallText>(DEFAULT_PAYWALL_TEXT);
-  const [adminSection, setAdminSection] = useState<'messages' | 'payment' | 'codes'>('messages');
+  const [adminSection, setAdminSection] = useState<'messages' | 'payment' | 'codes' | 'text' | 'start'>('messages');
+  const [siteTextDraft, setSiteTextDraft] = useState<SiteText | null>(null);
+  const [startHereDraft, setStartHereDraft] = useState<StartHereContent | null>(null);
+  const siteText = useSiteText();
+  const startHereContent = useStartHere(!!user);
   const [paywallDraft, setPaywallDraft] = useState<PaywallText | null>(null);
   const [paywallPreview, setPaywallPreview] = useState<{ text: PaywallText; trialRemaining: number; trialDaysLeft: number } | null>(null);
   const [pendingStandardToSave, setPendingStandardToSave] = useState<Standard | null>(null);
@@ -997,7 +1006,7 @@ export default function App() {
     if (!filteredRecords.length || !viewingStudentId) return;
     const student = students.find(s => s.id === viewingStudentId);
     
-    const headers = ["Date", "Activity Description", "Standard Code", "Subject", "Standard Description", "Match Logic"];
+    const headers = ["Date", "Activity Description", "Standard Code", "Subject", "Standard Description", siteText.csvLogicHeading];
     const rows = filteredRecords.map(r => [
         r.activityDate,
         `"${r.activityDescription.replace(/"/g, '""')}"`,
@@ -1698,7 +1707,7 @@ export default function App() {
              <p className="text-slate-500 text-xs font-medium mb-8">
                {students.length === 0 
                 ? "Create or select a Target Student to save this record." 
-                : "Select which profile should store this alignment record."}
+                : siteText.saveProfilePrompt}
              </p>
              <div className="space-y-3">
                 {students.map(s => (
@@ -1780,7 +1789,7 @@ export default function App() {
                                 onChange={(e) => setPdfIncludeMatchLogic(e.target.checked)}
                                 className="w-5 h-5 rounded border-slate-300 text-[#81adb3] focus:ring-[#81adb3]"
                             />
-                            <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Include Match Logic</span>
+                            <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">{siteText.includeLogicLabel}</span>
                         </label>
                         
                         <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-colors">
@@ -1814,7 +1823,7 @@ export default function App() {
                     
                     <div className="pt-6 flex flex-col items-center">
                         <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-4 text-center max-w-md">
-                            Need help turning match logic into charter-approved work samples? <a href={BLUEPRINT_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="text-[#81adb3] font-black hover:underline underline-offset-2">Check out our comprehensive Charter Homeschool Blueprint</a>.
+                            {siteText.blueprintLine} <a href={siteText.blueprintUrl} target="_blank" rel="noopener noreferrer" className="text-[#81adb3] font-black hover:underline underline-offset-2">{siteText.blueprintLinkText}</a>.
                         </p>
                         <button onClick={() => setShowExportModal(false)} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">Cancel</button>
                     </div>
@@ -1903,7 +1912,7 @@ export default function App() {
                       <h1 className="text-lg lg:text-xl font-black text-slate-800 tracking-tighter leading-tight">Homeschool Work Sample <span className="text-[#e7b64f]">Pro</span></h1>
                       {isPro && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[8px] font-black uppercase rounded-md tracking-widest ring-1 ring-emerald-200">Premium</span>}
                    </div>
-                   <a href="https://www.charterhomeschoolhelp.com" target="_blank" rel="noopener noreferrer" className="block text-[9px] font-black uppercase tracking-[0.2em] text-[#367c92] hover:underline leading-tight">by Charter Homeschool Help</a>
+                   <a href={siteText.websiteUrl} target="_blank" rel="noopener noreferrer" className="block text-[9px] font-black uppercase tracking-[0.2em] text-[#367c92] hover:underline leading-tight">{siteText.headerByline}</a>
                    <span className="text-[8px] font-black uppercase tracking-[0.15em] text-slate-400">
                     v{APP_VERSION} • {isPro ? 'Beta License Active' : trialSummary(trial)}
                    </span>
@@ -2014,7 +2023,7 @@ export default function App() {
                                {schoolYearStart && schoolYearEnd && ` (${new Date(schoolYearStart).toLocaleDateString()} - ${new Date(schoolYearEnd).toLocaleDateString()})`}
                              </p>
                            )}
-                           <p className="text-slate-400 text-sm font-medium no-print">Private storage for academic alignment records.</p>
+                           <p className="text-slate-400 text-sm font-medium no-print">{siteText.vaultSubtitle}</p>
                        </div>
                        <div className="flex gap-4">
                          {!viewingStudentId && (
@@ -2143,7 +2152,7 @@ export default function App() {
                                                 <div className="space-y-6">
                                                     <div className="flex gap-3 flex-wrap items-center">
                                                         <span className="standard-code px-3 py-1 bg-slate-800 text-white text-[10px] font-black rounded uppercase tracking-widest">{record.standardCode}</span>
-                                                        {freq > 1 && <span className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-[#81adb3] text-white text-[9px] font-black rounded uppercase tracking-[0.15em] shadow-sm">Matched {freq}x</span>}
+                                                        {freq > 1 && <span className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-[#81adb3] text-white text-[9px] font-black rounded uppercase tracking-[0.15em] shadow-sm">{fillCount(siteText.coveredTag, freq)}</span>}
                                                         <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded uppercase tracking-widest">{record.standardSubject}</span>
                                                         <button onClick={() => handleDeleteRecord(record.id)} className="ml-auto opacity-0 group-hover/row:opacity-100 p-2 text-slate-300 hover:text-red-500 transition-all no-print">
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -2180,7 +2189,7 @@ export default function App() {
                 <div className="flex items-end justify-between border-b border-slate-200 pb-6">
                   <div>
                     <h2 className="text-4xl font-black text-slate-800 uppercase tracking-tighter leading-none mb-1">Admin</h2>
-                    <p className="text-[#e7b64f] text-xs font-black uppercase tracking-widest">{adminSection === 'messages' ? 'In-App Messages' : adminSection === 'codes' ? 'Promo Codes' : 'Payment Screen Words'}</p>
+                    <p className="text-[#e7b64f] text-xs font-black uppercase tracking-widest">{adminSection === 'messages' ? 'In-App Messages' : adminSection === 'codes' ? 'Promo Codes' : adminSection === 'text' ? 'Text & Links' : adminSection === 'start' ? 'FAQs & Steps' : 'Payment Screen Words'}</p>
                   </div>
                   {adminSection === 'messages' && <button onClick={loadAdminMessages} className="text-[9px] font-black text-[#81adb3] uppercase tracking-widest border border-[#81adb3]/20 px-4 py-2 rounded-xl hover:bg-[#81adb3]/5 transition-colors">
                     {isLoadingMessages ? 'Loading...' : 'Refresh'}
@@ -2190,8 +2199,24 @@ export default function App() {
                   <button onClick={() => setAdminSection('messages')} className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${adminSection === 'messages' ? 'bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Messages</button>
                   <button onClick={() => setAdminSection('payment')} className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${adminSection === 'payment' ? 'bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Payment screen</button>
                   <button onClick={() => setAdminSection('codes')} className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${adminSection === 'codes' ? 'bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Codes</button>
+                  <button onClick={() => setAdminSection('text')} className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${adminSection === 'text' ? 'bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Text &amp; Links</button>
+                  <button onClick={() => setAdminSection('start')} className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${adminSection === 'start' ? 'bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>FAQs &amp; Steps</button>
                 </div>
                 {adminSection === 'codes' && <AdminCodes />}
+                {adminSection === 'text' && (
+                  <AdminTextEditor
+                    draft={siteTextDraft ?? siteText}
+                    onDraftChange={setSiteTextDraft}
+                    onSave={async (t) => { await dbService.setSiteText({ ...t }); applySiteText(t); setSiteTextDraft(null); }}
+                  />
+                )}
+                {adminSection === 'start' && (
+                  <AdminStartHereEditor
+                    draft={startHereDraft ?? startHereContent}
+                    onDraftChange={setStartHereDraft}
+                    onSave={async (c) => { await dbService.setStartHere({ steps: c.steps, faqs: c.faqs }); applyStartHere(c); setStartHereDraft(null); }}
+                  />
+                )}
                 {adminSection === 'payment' && (
                   <AdminPaywallEditor
                     draft={paywallDraft ?? paywallText}
@@ -2246,55 +2271,37 @@ export default function App() {
                       </div>
                     )}
 
+                    {startHereContent.steps.length > 0 && (
                     <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
                         <h2 className="text-2xl font-black text-slate-800 mb-6 uppercase tracking-tighter">How to use Homeschool Work Sample Pro</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                            <div className="space-y-3">
-                                <div className="w-10 h-10 bg-[#81adb3]/10 text-[#81adb3] rounded-2xl flex items-center justify-center font-black text-sm">1</div>
-                                <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Enter your activity</h4>
-                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Enter a photo or key words representing the real life learning activity your child completed. Choose the grade and subject, then add a photo or type a few words about what your child did.</p>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="w-10 h-10 bg-[#e7b64f]/10 text-[#e7b64f] rounded-2xl flex items-center justify-center font-black text-sm">2</div>
-                                <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Choose a work sample option</h4>
-                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Choose a work sample option that is the best fit for your child from the generated learning artifacts instantly created just for you.</p>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="w-10 h-10 bg-[#f4989c]/10 text-[#f4989c] rounded-2xl flex items-center justify-center font-black text-sm">3</div>
-                                <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Provide activity feedback</h4>
-                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Your child will provide brief proof of knowledge based on the activity they completed. You may choose to include a brief reflection, drawing what they learned, or answering questions about what they learned in their work sample generation.</p>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="w-10 h-10 bg-[#367c92]/10 text-[#367c92] rounded-2xl flex items-center justify-center font-black text-sm">4</div>
-                                <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">Send it</h4>
-                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Print it, download the PDF, or use "Email or share" to send it to your charter teacher.</p>
-                            </div>
+                        <div className={`grid grid-cols-1 gap-8 ${startHereContent.steps.length >= 4 ? 'md:grid-cols-4' : startHereContent.steps.length === 3 ? 'md:grid-cols-3' : startHereContent.steps.length === 2 ? 'md:grid-cols-2' : ''}`}>
+                            {startHereContent.steps.map((step, i) => {
+                                const color = ['#81adb3', '#e7b64f', '#f4989c', '#367c92'][i % 4];
+                                return (
+                                    <div key={i} className="space-y-3">
+                                        <div style={{ backgroundColor: color + '1a', color }} className="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm">{i + 1}</div>
+                                        <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-800">{step.title}</h4>
+                                        <p className="text-[11px] text-slate-500 font-medium leading-relaxed"><RichText text={step.body} /></p>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
+                    )}
 
+                    {startHereContent.faqs.length > 0 && (
                     <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
                         <h2 className="text-2xl font-black text-slate-800 mb-8 uppercase tracking-tighter">Frequently Asked Questions</h2>
                         <div className="space-y-6">
-                            <div className="border-b border-slate-100 pb-6">
-                                <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-3">Can I add a picture to the work sample?</h3>
-                                <p className="text-sm text-slate-600 leading-relaxed">
-                                    You may choose to use the photo you uploaded of the activity within the work sample generation, choose a different one from your device or phone, or let your child draw or annotate in the box. You can also print the page so your child can color in the box by hand.
-                                </p>
-                            </div>
-                            <div className="border-b border-slate-100 pb-6">
-                                <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-3">Is my student data private?</h3>
-                                <p className="text-sm text-slate-600 leading-relaxed">
-                                    Yes. All student data is stored in your private, encrypted account vault. We do not sell or share student identifiers with third parties, districts, or government agencies. Your data is for your exclusive record-keeping use only. Zero-reporting guarantee active.
-                                </p>
-                            </div>
-                            <div className="pb-6">
-                                <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-3">How do I turn this into charter-approved work samples?</h3>
-                                <p className="text-sm text-slate-600 leading-relaxed">
-                                    The work sample options provided by this tool are a starting point. To create charter-compliant work samples, Check out our comprehensive Charter Homeschool Blueprint: <a href={BLUEPRINT_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="text-[#81adb3] font-black hover:underline">The Charter Homeschool Blueprint</a>. This guide shows you how to document learning in formats your charter will accept.
-                                </p>
-                            </div>
+                            {startHereContent.faqs.map((f, i) => (
+                                <div key={i} className={i === startHereContent.faqs.length - 1 ? 'pb-6' : 'border-b border-slate-100 pb-6'}>
+                                    <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest mb-3">{f.q}</h3>
+                                    <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line"><RichText text={f.a} /></p>
+                                </div>
+                            ))}
                         </div>
                     </div>
+                    )}
 
                     <InstallDirections />
 
@@ -2318,9 +2325,9 @@ export default function App() {
 
       <footer className="w-full py-6 border-t border-slate-100 bg-white/50 backdrop-blur-sm mt-auto no-print">
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <a href="https://www.charterhomeschoolhelp.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-[#367c92]" title="Charter Homeschool Help (opens our website)">
+          <a href={siteText.websiteUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-[#367c92]" title="Charter Homeschool Help (opens our website)">
             <img src="/brand/chh-logo.png" alt="Charter Homeschool Help" className="w-10 h-10" />
-            <span className="hover:underline">© {new Date().getFullYear()} Charter Homeschool Help | All Rights Reserved</span>
+            <span className="hover:underline">© {new Date().getFullYear()} {siteText.footerLine}</span>
           </a>
         </div>
       </footer>
