@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { MONTHLY_PRICE, YEARLY_PRICE, YEARLY_SAVE_PERCENT } from '../services/plans';
+import { DEFAULT_PAYWALL_TEXT, PaywallText, trialSentence } from '../services/paywallText';
 
 interface AccessGateUser {
   id: string;
@@ -14,6 +15,10 @@ interface AccessGateProps {
   onCancel?: () => void;
   // How many free trial matches are left. 0 (or missing) means the trial is used up.
   trialRemaining?: number;
+  // The words on the screen (editable by Dana in the Admin tab). Original words are used if missing.
+  text?: PaywallText;
+  // Admin preview: shows the screen but cannot start a payment.
+  previewMode?: boolean;
 }
 
 const LogoIcon = ({ className = "w-16 h-16" }) => (
@@ -24,7 +29,7 @@ const LogoIcon = ({ className = "w-16 h-16" }) => (
   </div>
 );
 
-export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel, trialRemaining = 0 }) => {
+export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel, trialRemaining = 0, text = DEFAULT_PAYWALL_TEXT, previewMode = false }) => {
   const [inputCode, setInputCode] = useState('');
   const [userName, setUserName] = useState(user?.name || '');
   const [error, setError] = useState('');
@@ -36,6 +41,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
   const validCode = (envCode || 'TEACH2025').trim().toUpperCase();
 
   const handleStripeCheckout = async () => {
+    if (previewMode) return;
     const nameAttempt = userName.trim();
     if (!nameAttempt) {
       setError('Please enter your Account User Name first.');
@@ -100,11 +106,9 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
         {/* Header Section */}
         <div className="flex flex-col items-center text-center mb-10">
             <LogoIcon className="mb-6" />
-            <h1 className="text-3xl md:text-4xl font-black text-slate-800 mb-2 tracking-tighter leading-none">Unlock Beta License</h1>
+            <h1 className="text-3xl md:text-4xl font-black text-slate-800 mb-2 tracking-tighter leading-none">{text.heading}</h1>
             <p className="text-slate-500 text-sm font-medium px-4">
-              {trialRemaining > 0
-                ? `You still have ${trialRemaining} free trial ${trialRemaining === 1 ? 'match' : 'matches'}. Upgrade any time to keep going.`
-                : 'Your free trial matches are complete. Join our early adopter community to keep creating work samples.'}
+              {trialRemaining > 0 ? trialSentence(text.subtitleTrial, trialRemaining) : text.subtitleUsedUp}
             </p>
         </div>
 
@@ -121,7 +125,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
 
         {/* Plan Selector */}
         <div className="mb-10 relative">
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#81adb3] text-white px-5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg z-10">Special Beta Pricing</div>
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#81adb3] text-white px-5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg z-10">{text.badge}</div>
 
             <div className="grid grid-cols-2 gap-3 pt-4">
                 <button
@@ -151,15 +155,23 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
                 </button>
             </div>
 
+            <div className="mt-6 rounded-[1.5rem] bg-slate-50 border border-slate-100 px-5 py-4 text-center">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">You are purchasing</p>
+                <p className="text-sm font-black text-slate-800 mt-1">{text.productName} · {selectedPlan === 'annual' ? 'Yearly' : 'Monthly'}</p>
+                <p className="text-[11px] text-slate-500 font-medium mt-1">
+                  {selectedPlan === 'annual' ? `$${YEARLY_PRICE} per year` : `$${MONTHLY_PRICE} per month`}. Renews automatically until you cancel.
+                </p>
+            </div>
+
             <div className="mt-6 text-center">
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-4 leading-relaxed">
-                   Work Sample Creation • Standards Matching • Student Vault • Branded PDF Records
+                   {text.features}
                 </p>
             </div>
 
             <div className="mt-4">
                 <p className="text-[8px] font-bold text-[#f4989c] uppercase tracking-widest text-center leading-relaxed">
-                   Plans renew automatically until you cancel. Cancel any time under My Plan. Beta pricing for early adopters; renewal rates may reflect standard market pricing.
+                   {text.finePrint}
                 </p>
             </div>
         </div>
@@ -171,10 +183,11 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
             <div className="grid grid-cols-1 gap-3">
                 <button 
                   onClick={handleStripeCheckout}
+                  disabled={previewMode}
                   className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10"
                 >
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M13.911 8.612c0-.574-.498-.822-1.362-.822-.851 0-1.796.155-2.685.474l-.367-3.238c.948-.362 2.035-.556 3.238-.556 2.66 0 4.413 1.294 4.413 3.613 0 3.353-4.524 3.93-4.524 5.224 0 .477.411.754 1.23.754.912 0 2.022-.244 3.012-.662l.354 3.123c-1.012.445-2.221.682-3.486.682-2.73 0-4.341-1.363-4.341-3.614 0-3.327 4.524-4.041 4.524-5.003M19.345 5.253H23l-1.328 12.5H18.017l1.328-12.5zM4.655 5.253h3.655L6.982 17.753H3.327L4.655 5.253zM10.024 5.253h3.655l-.337 3.123h-3.655l.337-3.123z"/></svg>
-                    Pay with Stripe
+                    {previewMode ? 'Preview only' : 'Pay with Stripe'}
                 </button>
             </div>
         </div>

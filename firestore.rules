@@ -75,6 +75,13 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // Settings (for example the words on the payment screen): anyone signed in can read,
+    // only the admin can change them.
+    match /settings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     // System stats collection - allow authenticated users to read and write (for usage tracking)
     match /system_stats/{statId} {
       allow read, write: if isAuthenticated();
