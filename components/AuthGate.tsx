@@ -7,15 +7,6 @@ interface AuthGateProps {
   onShowTerms: () => void;
 }
 
-const LogoIcon = ({ className = "w-48 h-12" }) => (
-  <div className={`${className} bg-gradient-to-r from-[#81adb3] via-[#e7b64f] to-[#f4989c] rounded-full flex items-center justify-center shadow-lg relative transition-all hover:brightness-105 no-print`}>
-    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l.707.707M6.343 6.343l.707-.707M8 11h8a2 2 0 012 2v5H6v-5a2 2 0 012-2z" />
-    </svg>
-    <div className="absolute top-1 right-3 w-3 h-3 bg-white/40 rounded-full border border-white/60"></div>
-  </div>
-);
-
 export const AuthGate: React.FC<AuthGateProps> = ({ onLogin, onShowTerms }) => {
   const [mode, setMode] = useState<'login' | 'signup'>('signup');
   const [email, setEmail] = useState('');
@@ -76,10 +67,13 @@ export const AuthGate: React.FC<AuthGateProps> = ({ onLogin, onShowTerms }) => {
 
       <div className="bg-white p-10 md:p-14 rounded-[3.5rem] shadow-[0_30px_100px_-20px_rgba(0,0,0,0.1)] max-w-md w-full border border-slate-100 relative z-10 animate-fade-in text-center">
         <div className="text-center mb-10">
-            <LogoIcon className="mx-auto mb-8" />
+            <a href="https://www.charterhomeschoolhelp.com" target="_blank" rel="noopener noreferrer" title="Charter Homeschool Help (opens our website)">
+              <img src="/brand/chh-logo.png" alt="Charter Homeschool Help" className="mx-auto mb-6 w-24 h-24" />
+            </a>
             <h1 className="text-4xl font-black text-slate-800 tracking-tighter leading-tight mb-2">
                 Homeschool Work Sample Pro
             </h1>
+            <a href="https://www.charterhomeschoolhelp.com" target="_blank" rel="noopener noreferrer" className="inline-block text-slate-400 hover:text-[#367c92] text-[10px] font-black uppercase tracking-[0.25em] mb-4">by Charter Homeschool Help</a>
             <p className="text-[#81adb3] text-[11px] font-black uppercase tracking-[0.2em] mb-4 leading-relaxed max-w-[280px] mx-auto">
                 MAKING HOMESCHOOL DOABLE.
             </p>
