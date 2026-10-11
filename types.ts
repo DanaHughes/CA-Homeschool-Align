@@ -21,6 +21,8 @@ export interface User {
   searchCount: number;
   accountTier: 'free' | 'pro';
   subscriptionPlan: SubscriptionPlan;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
   hasReviewed?: boolean;
   consents: {
     terms: boolean;
@@ -89,4 +91,4 @@ export interface FeatureRequest {
   timestamp: number;
 }
 
-export type TabView = 'search' | 'students' | 'features' | 'admin';
+export type TabView = 'search' | 'students' | 'features' | 'plan' | 'admin';

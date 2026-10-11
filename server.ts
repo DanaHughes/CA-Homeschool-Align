@@ -28,6 +28,11 @@ app.post('/api/verify-checkout-session', async (req, res) => {
   return handler(req, res);
 });
 
+app.post('/api/create-portal-session', async (req, res) => {
+  const handler = (await import('./api/create-portal-session.js')).default;
+  return handler(req, res);
+});
+
 app.post('/api/gemini', async (req, res) => {
   const handler = (await import('./api/gemini.js')).default;
   return handler(req, res);

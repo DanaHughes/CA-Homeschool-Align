@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { MONTHLY_PRICE, YEARLY_PRICE, YEARLY_SAVE_PERCENT } from '../services/plans';
 
 interface AccessGateUser {
   id: string;
@@ -11,6 +12,8 @@ interface AccessGateProps {
   user?: AccessGateUser | null;
   onUnlock: (name: string, code: string) => void;
   onCancel?: () => void;
+  // How many free trial matches are left. 0 (or missing) means the trial is used up.
+  trialRemaining?: number;
 }
 
 const LogoIcon = ({ className = "w-16 h-16" }) => (
@@ -21,7 +24,7 @@ const LogoIcon = ({ className = "w-16 h-16" }) => (
   </div>
 );
 
-export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel }) => {
+export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel, trialRemaining = 0 }) => {
   const [inputCode, setInputCode] = useState('');
   const [userName, setUserName] = useState(user?.name || '');
   const [error, setError] = useState('');
@@ -98,7 +101,11 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
         <div className="flex flex-col items-center text-center mb-10">
             <LogoIcon className="mb-6" />
             <h1 className="text-3xl md:text-4xl font-black text-slate-800 mb-2 tracking-tighter leading-none">Unlock Beta License</h1>
-            <p className="text-slate-500 text-sm font-medium px-4">Your 25 trial matches are complete. Join our early adopter community to continue aligning your classroom.</p>
+            <p className="text-slate-500 text-sm font-medium px-4">
+              {trialRemaining > 0
+                ? `You still have ${trialRemaining} free trial ${trialRemaining === 1 ? 'match' : 'matches'}. Upgrade any time to keep going.`
+                : 'Your free trial matches are complete. Join our early adopter community to keep creating work samples.'}
+            </p>
         </div>
 
         {/* Name Registration */}
@@ -126,7 +133,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
                       : 'border-slate-100 bg-white hover:border-slate-200'
                   }`}
                 >
-                    <h4 className="text-3xl font-black text-slate-800 tracking-tighter">$9</h4>
+                    <h4 className="text-3xl font-black text-slate-800 tracking-tighter">${MONTHLY_PRICE}</h4>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mt-1">Per Month</p>
                 </button>
                 <button
@@ -138,21 +145,21 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
                       : 'border-slate-100 bg-white hover:border-slate-200'
                   }`}
                 >
-                    <div className="absolute -top-2.5 right-4 bg-[#e7b64f] text-white px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider">Save 27%</div>
-                    <h4 className="text-3xl font-black text-slate-800 tracking-tighter">$79</h4>
+                    <div className="absolute -top-2.5 right-4 bg-[#e7b64f] text-slate-800 px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider">Save {YEARLY_SAVE_PERCENT}%</div>
+                    <h4 className="text-3xl font-black text-slate-800 tracking-tighter">${YEARLY_PRICE}</h4>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mt-1">Per Year</p>
                 </button>
             </div>
 
             <div className="mt-6 text-center">
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-4 leading-relaxed">
-                   Unlimited Standards Alignment • Infinite Vault Storage • Official PDF Transcripts • Lifetime Beta Badge
+                   Work Sample Creation • Standards Matching • Student Vault • Branded PDF Records
                 </p>
             </div>
 
             <div className="mt-4">
                 <p className="text-[8px] font-bold text-[#f4989c] uppercase tracking-widest text-center leading-relaxed">
-                   Beta pricing for early adopters. Renewal rates may reflect standard market pricing.
+                   Plans renew automatically until you cancel. Cancel any time under My Plan. Beta pricing for early adopters; renewal rates may reflect standard market pricing.
                 </p>
             </div>
         </div>
@@ -196,7 +203,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
             ) : (
                 <div className="flex flex-col items-center gap-4">
                     <button onClick={() => setShowCodeInput(true)} className="text-[10px] font-black text-slate-300 uppercase tracking-widest hover:text-[#81adb3] transition-colors underline underline-offset-4 decoration-1">I already have an access code</button>
-                    {onCancel && <button onClick={onCancel} className="text-[10px] font-black text-[#81adb3] uppercase tracking-widest hover:text-slate-600 transition-colors">Continue with Trial Tier</button>}
+                    {onCancel && <button onClick={onCancel} className="text-[10px] font-black text-[#81adb3] uppercase tracking-widest hover:text-slate-600 transition-colors">{trialRemaining > 0 ? 'Maybe Later' : 'Continue with Trial Tier'}</button>}
                 </div>
             )}
         </div>
