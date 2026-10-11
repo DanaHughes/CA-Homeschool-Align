@@ -10,6 +10,7 @@
  */
 
 import Stripe from 'stripe';
+import { actionFromCheckoutSession, applyAction } from './lib/subscriptionAccess.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -35,8 +36,25 @@ export default async function handler(req: any, res: any) {
 
     console.log(`[Stripe] Verified session ${sessionId}: paid=${paid}`);
 
+    // Once Stripe confirms the payment, the SERVER marks the account as Pro (never the browser).
+    // If that fails (for example the database permission is not set up yet), "activated" is false
+    // and the caller may fall back to the older browser-side unlock.
+    let activated = false;
+    if (paid) {
+      try {
+        const action = actionFromCheckoutSession(session);
+        if (action) {
+          await applyAction(action);
+          activated = true;
+        }
+      } catch (activationError: any) {
+        console.error('[Stripe] Could not activate account on the server:', activationError?.message);
+      }
+    }
+
     return res.status(200).json({
       paid,
+      activated,
       userId: session.client_reference_id,
       userEmail: session.customer_email,
       userName: (session.metadata && session.metadata.userName) || '',
