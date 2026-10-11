@@ -3,19 +3,20 @@ import { User } from '../types';
 import { PlanCards } from './PlanCards';
 import { planLabel } from '../services/plans';
 import { openBillingPortal } from '../services/billingService';
+import { TrialStatus } from '../services/trialService';
 
 interface PlanPageProps {
   user: User;
   isPro: boolean;
   isComplimentary: boolean;
-  trialRemaining: number;
+  trial: TrialStatus;
   onUpgrade: () => void;
 }
 
 const prettyDate = (ms?: number): string =>
   ms ? new Date(ms).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '';
 
-export const PlanPage: React.FC<PlanPageProps> = ({ user, isPro, isComplimentary, trialRemaining, onUpgrade }) => {
+export const PlanPage: React.FC<PlanPageProps> = ({ user, isPro, isComplimentary, trial, onUpgrade }) => {
   const [isOpening, setIsOpening] = useState(false);
   const [error, setError] = useState('');
 
@@ -35,7 +36,7 @@ export const PlanPage: React.FC<PlanPageProps> = ({ user, isPro, isComplimentary
   return (
     <div className="animate-fade-in space-y-8 max-w-3xl mx-auto">
       <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100">
-        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#367c92] mb-3">My Plan</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#367c92] mb-3">My Account</p>
 
         {isComplimentary && (
           <>
@@ -72,9 +73,13 @@ export const PlanPage: React.FC<PlanPageProps> = ({ user, isPro, isComplimentary
 
         {!isPro && (
           <>
-            <h2 className="text-3xl font-black text-slate-800 tracking-tighter mb-3">Free trial</h2>
+            <h2 className="text-3xl font-black text-slate-800 tracking-tighter mb-3">{trial.over ? 'Free trial ended' : 'Free trial'}</h2>
             <p className="text-sm text-slate-600 leading-relaxed mb-8">
-              You have <span className="font-black">{trialRemaining}</span> trial {trialRemaining === 1 ? 'match' : 'matches'} left. Upgrade any time to keep going.
+              {trial.over
+                ? 'Your free trial has ended. Your saved work and PDF export stay yours. Choose a plan to keep creating work samples.'
+                : trial.started
+                  ? <>You have <span className="font-black">{trial.remaining}</span> free {trial.remaining === 1 ? 'generation' : 'generations'} available for the next <span className="font-black">{trial.daysLeft}</span> {trial.daysLeft === 1 ? 'day' : 'days'}. Upgrade any time to keep going.</>
+                  : <>You have <span className="font-black">{trial.generations}</span> free generations available for <span className="font-black">{trial.days}</span> days. Your {trial.days} days start with your first one.</>}
             </p>
             <PlanCards onUpgrade={onUpgrade} />
           </>

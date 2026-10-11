@@ -11,10 +11,12 @@ interface AccessGateUser {
 
 interface AccessGateProps {
   user?: AccessGateUser | null;
-  onUnlock: (name: string, code: string) => void;
+  onUnlock?: (name: string, code: string) => void;
   onCancel?: () => void;
   // How many free trial matches are left. 0 (or missing) means the trial is used up.
   trialRemaining?: number;
+  // Days left in the free trial (used in the sentence under the title).
+  trialDaysLeft?: number;
   // The words on the screen (editable by Dana in the Admin tab). Original words are used if missing.
   text?: PaywallText;
   // Admin preview: shows the screen but cannot start a payment.
@@ -29,16 +31,11 @@ const LogoIcon = ({ className = "w-16 h-16" }) => (
   </div>
 );
 
-export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel, trialRemaining = 0, text = DEFAULT_PAYWALL_TEXT, previewMode = false }) => {
-  const [inputCode, setInputCode] = useState('');
+export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel, trialRemaining = 0, trialDaysLeft = 7, text = DEFAULT_PAYWALL_TEXT, previewMode = false }) => {
   const [userName, setUserName] = useState(user?.name || '');
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showCodeInput, setShowCodeInput] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'annual' | 'monthly'>('annual');
-
-  const envCode = process.env.VITE_ACCESS_CODE;
-  const validCode = (envCode || 'TEACH2025').trim().toUpperCase();
 
   const handleStripeCheckout = async () => {
     if (previewMode) return;
@@ -85,20 +82,6 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
     }
   };
 
-  const handleCodeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const userAttempt = inputCode.trim().toUpperCase();
-    const nameAttempt = userName.trim();
-
-    if (!nameAttempt) { setError('Name is required for license registry.'); return; }
-    if (userAttempt === validCode) {
-      setIsProcessing(true);
-      setTimeout(() => onUnlock(nameAttempt, userAttempt), 1000);
-    } else {
-      setError('Invalid code. Check your Stan Store receipt.');
-    }
-  };
-
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl flex items-center justify-center z-[150] p-6 font-sans">
       <div className="bg-white p-8 md:p-12 rounded-[3.5rem] shadow-2xl max-w-lg w-full border border-slate-100 animate-fade-in relative overflow-hidden">
@@ -108,7 +91,7 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
             <LogoIcon className="mb-6" />
             <h1 className="text-3xl md:text-4xl font-black text-slate-800 mb-2 tracking-tighter leading-none">{text.heading}</h1>
             <p className="text-slate-500 text-sm font-medium px-4">
-              {trialRemaining > 0 ? trialSentence(text.subtitleTrial, trialRemaining) : text.subtitleUsedUp}
+              {trialRemaining > 0 ? trialSentence(text.subtitleTrial, trialRemaining, trialDaysLeft) : text.subtitleUsedUp}
             </p>
         </div>
 
@@ -199,26 +182,8 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
             </div>
         )}
 
-        <div className="mt-10 pt-8 border-t border-slate-50 text-center space-y-4">
-            {showCodeInput ? (
-                <form onSubmit={handleCodeSubmit} className="space-y-4 animate-fade-in">
-                    <input
-                      type="password" required value={inputCode}
-                      onChange={(e) => { setInputCode(e.target.value); setError(''); }}
-                      placeholder="ENTER ACCESS CODE"
-                      className="w-full px-6 py-4 rounded-2xl border-2 border-slate-100 focus:ring-4 focus:ring-[#81adb3]/10 focus:border-[#81adb3] outline-none transition-all font-mono tracking-widest text-center"
-                    />
-                    <div className="flex gap-2">
-                        <button type="submit" className="flex-grow py-4 bg-slate-800 text-white font-black rounded-2xl text-[10px] uppercase tracking-widest">Verify Code</button>
-                        <button type="button" onClick={() => setShowCodeInput(false)} className="px-6 py-4 bg-slate-100 text-slate-400 font-black rounded-2xl text-[10px] uppercase tracking-widest">Cancel</button>
-                    </div>
-                </form>
-            ) : (
-                <div className="flex flex-col items-center gap-4">
-                    <button onClick={() => setShowCodeInput(true)} className="text-[10px] font-black text-slate-300 uppercase tracking-widest hover:text-[#81adb3] transition-colors underline underline-offset-4 decoration-1">I already have an access code</button>
-                    {onCancel && <button onClick={onCancel} className="text-[10px] font-black text-[#81adb3] uppercase tracking-widest hover:text-slate-600 transition-colors">{trialRemaining > 0 ? 'Maybe Later' : 'Continue with Trial Tier'}</button>}
-                </div>
-            )}
+        <div className="mt-10 pt-8 border-t border-slate-50 text-center">
+            {onCancel && <button onClick={onCancel} className="text-[10px] font-black text-[#81adb3] uppercase tracking-widest hover:text-slate-600 transition-colors">{trialRemaining > 0 ? 'Maybe Later' : 'Continue with Free Access'}</button>}
         </div>
 
         {isProcessing && (

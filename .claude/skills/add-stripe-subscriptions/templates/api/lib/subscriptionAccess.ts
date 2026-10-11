@@ -10,6 +10,7 @@
  */
 
 import { getApps, initializeApp, applicationDefault } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
 type Plan = 'none' | 'monthly' | 'yearly';
@@ -85,14 +86,27 @@ export const actionFromEvent = (event: any): AccessAction | null => {
   }
 };
 
-const getDb = () => {
-  const app =
-    getApps()[0] ||
-    initializeApp({
-      credential: applicationDefault(),
-      projectId: process.env.FIREBASE_PROJECT_ID || 'ca-homeschool-align'
-    });
-  return getFirestore(app);
+const getAdminApp = () =>
+  getApps()[0] ||
+  initializeApp({
+    credential: applicationDefault(),
+    projectId: process.env.FIREBASE_PROJECT_ID || 'ca-homeschool-align'
+  });
+
+const getDb = () => getFirestore(getAdminApp());
+
+// Proves WHO is asking: turns the sign-in token the browser sends into the person's user id.
+// Throws if the token is missing, expired or fake.
+export const verifySignInToken = async (idToken: string): Promise<string> => {
+  const decoded = await getAuth(getAdminApp()).verifyIdToken(idToken);
+  return decoded.uid;
+};
+
+// The Stripe customer record saved on the person's account when they paid (empty if none).
+export const getStripeCustomerId = async (userId: string): Promise<string> => {
+  const snap = await getDb().collection('users').doc(userId).get();
+  const value = snap.exists ? snap.data()?.stripeCustomerId : '';
+  return typeof value === 'string' ? value : '';
 };
 
 const usersBySubscription = async (db: FirebaseFirestore.Firestore, subscriptionId: string) => {

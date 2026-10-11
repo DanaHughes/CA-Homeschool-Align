@@ -50,7 +50,8 @@ interface Props {
   students: Student[];
   records: LearningRecord[];
   isPro: boolean;
-  freeLimit: number;
+  // True when the free trial has ended (the server enforces it; this just shows the plans screen sooner).
+  trialOver: boolean;
   onNeedPaywall: () => void;
   onSearchUsed: () => Promise<void>;
   onAddStudent: () => void;
@@ -225,7 +226,7 @@ const printElement = (el: HTMLElement) => {
 // The whole flow: 1) the activity, 2) work sample options, 3) your page.
 // ---------------------------------------------------------------------------
 export const WorkSampleFlow: React.FC<Props> = ({
-  user, students, records, isPro, freeLimit, onNeedPaywall, onSearchUsed, onAddStudent, onSaveRecord
+  user, students, records, isPro, trialOver, onNeedPaywall, onSearchUsed, onAddStudent, onSaveRecord
 }) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
@@ -323,6 +324,39 @@ export const WorkSampleFlow: React.FC<Props> = ({
       alert("You're creating very quickly. Please wait a few minutes and try again.");
       return true;
     }
+    if (msg === 'EMAIL_NOT_VERIFIED') {
+      alert('Please verify your email first. We sent a link to your inbox. The yellow box at the top of the page has a button to send it again.');
+      return true;
+    }
+    if (msg === 'DISPOSABLE_EMAIL') {
+      alert('The free trial needs a regular email address, not a temporary inbox. Please sign up with your own email, or choose a plan.');
+      return true;
+    }
+    if (msg === 'TRIAL_ALREADY_USED') {
+      alert('A free trial has already been used with this email address. Please choose a plan to continue.');
+      onNeedPaywall();
+      return true;
+    }
+    if (msg === 'TRIAL_ENDED' || msg === 'TRIAL_USED_UP') {
+      onNeedPaywall();
+      return true;
+    }
+    if (msg === 'FREE_DAILY_CAP') {
+      alert('Our free trial has reached its limit for today. Please try again tomorrow, or choose a plan to continue right away.');
+      return true;
+    }
+    if (msg === 'PRO_DAILY_LIMIT') {
+      alert("You've reached today's limit. Please try again tomorrow.");
+      return true;
+    }
+    if (msg === 'PRO_MONTHLY_LIMIT') {
+      alert("You've reached this month's limit. Please contact us if you need more.");
+      return true;
+    }
+    if (msg === 'SERVICE_UNAVAILABLE') {
+      alert('We could not check your account just now. Please try again in a minute.');
+      return true;
+    }
     return false;
   };
 
@@ -331,7 +365,7 @@ export const WorkSampleFlow: React.FC<Props> = ({
     if (!grade) { setFormError('Please choose a grade level.'); return; }
     if (!subject) { setFormError('Please choose a subject.'); return; }
     if (!query.trim() && !photo) { setFormError('Please add a photo or describe the activity.'); return; }
-    if (!isPro && user.searchCount >= freeLimit) { onNeedPaywall(); return; }
+    if (!isPro && trialOver) { onNeedPaywall(); return; }
 
     const activityText = query.trim() || 'Uploaded evidence';
     setLoading(true);
@@ -361,6 +395,7 @@ export const WorkSampleFlow: React.FC<Props> = ({
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e: any) {
       console.error('Generate error:', e);
+      if (!isPro) onSearchUsed().catch(() => {});
       if (!explainLimitError(e)) {
         setFormError("Sorry, that didn't work. Please check your connection and try again.");
       }
@@ -613,7 +648,7 @@ export const WorkSampleFlow: React.FC<Props> = ({
     <div className="animate-fade-in space-y-10 max-w-4xl mx-auto">
       <div className="text-center no-print">
         <h2 className="text-4xl md:text-5xl font-black text-slate-800 tracking-tighter mb-3 leading-tight">
-          Create a <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#81adb3] via-[#e7b64f] to-[#f4989c]">Work Sample</span>
+          Generate a <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#81adb3] via-[#e7b64f] to-[#f4989c]">Work Sample</span>
         </h2>
         <p className="text-[#81adb3] font-black text-[11px] uppercase tracking-[0.3em] mb-3">MAKING HOMESCHOOL DOABLE.</p>
         <p className="text-slate-400 text-[9px] font-medium uppercase tracking-wider italic">Independent tool. Not affiliated with the State of California or any public education agency.</p>

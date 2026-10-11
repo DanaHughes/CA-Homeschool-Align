@@ -20,11 +20,11 @@ const FIELDS: { key: keyof PaywallText; label: string; help: string; rows: numbe
   { key: 'features', label: 'What is included', help: 'One line under the plans. Use the • symbol between items if you like.', rows: 2 },
   {
     key: 'subtitleTrial',
-    label: 'Sentence under the title (trial matches still left)',
-    help: 'Type {number} where the number of matches left should appear. For example: You still have {number} free trial matches.',
+    label: 'Sentence under the title (free generations still left)',
+    help: 'Type {number} where the number of free generations left should appear, and {days} where the days left should appear. For example: You have {number} free generations available for the next {days} days.',
     rows: 2
   },
-  { key: 'subtitleUsedUp', label: 'Sentence under the title (all trial matches used)', help: 'Shown when a family has no free matches left.', rows: 2 },
+  { key: 'subtitleUsedUp', label: 'Sentence under the title (free trial over)', help: 'Shown when a family has no free generations or days left.', rows: 2 },
   { key: 'badge', label: 'Small badge above the plans', help: 'For example: Special Beta Pricing. This is a good place for a limited-time note.', rows: 1 },
   { key: 'finePrint', label: 'Fine print (renewal and cancel wording)', help: 'Keep a clear sentence that plans renew automatically and how to cancel.', rows: 3 }
 ];
@@ -109,16 +109,16 @@ export const AdminPaywallEditor: React.FC<AdminPaywallEditorProps> = ({ draft, o
           {isSaving ? 'Saving...' : 'Save'}
         </button>
         <button
-          onClick={() => onPreview(effective(), 25)}
+          onClick={() => onPreview(effective(), 5)}
           className="px-6 py-3 rounded-full bg-slate-100 text-slate-600 font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-200 transition-all"
         >
-          Preview (trial matches left)
+          Preview (trial still going)
         </button>
         <button
           onClick={() => onPreview(effective(), 0)}
           className="px-6 py-3 rounded-full bg-slate-100 text-slate-600 font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-200 transition-all"
         >
-          Preview (all used)
+          Preview (trial over)
         </button>
         <button
           onClick={handleReset}
