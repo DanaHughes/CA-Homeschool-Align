@@ -473,7 +473,7 @@ export const WorkSampleFlow: React.FC<Props> = ({
       setChosen(opt);
       setDesign(d);
       setFields({
-        name: student?.name || '',
+        name: '', // never filled in automatically: the parent types the name on the page (privacy)
         date: prettyDate(),
         lp,
         subject,
@@ -624,7 +624,7 @@ export const WorkSampleFlow: React.FC<Props> = ({
 
   const sheetTop = (
     <>
-      {fieldRow('First and Last Name', 'name', !!student, 'ws-name')}
+      {fieldRow('First and Last Name', 'name', false, 'ws-name')}
       {fieldRow('Date of learning activity', 'date', true, 'ws-date')}
       {showLp && fieldRow('Learning Period', 'lp', true, 'ws-lp')}
       {fieldRow('Subject', 'subject', true, 'ws-subject')}

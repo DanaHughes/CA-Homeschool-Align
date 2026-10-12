@@ -41,7 +41,8 @@ export const progressPatch = (d: Omit<WorkSampleDraft, 'savedAt'>) =>
     chosen: d.chosen,
     content: d.content,
     design: d.design,
-    fields: d.step === 3 ? d.fields : null,
+    // The name typed on the page is NEVER saved in History (privacy); it stays only in this browser.
+    fields: d.step === 3 ? { ...d.fields, name: '' } : null,
     showLp: d.showLp,
     writing: cap(d.writing, 20000),
     boxes: (d.boxes || []).map(b => cap(b, 5000)),

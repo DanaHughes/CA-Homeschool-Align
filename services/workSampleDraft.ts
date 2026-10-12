@@ -1,7 +1,8 @@
 // Keeps a work sample "in progress" safe. Everything the family has done on the Generate screen is
 // saved in this browser as they go (nothing is sent anywhere), and put back when they return, so a
 // stray click on another tab, a refresh, or a closed window does not lose the page.
-// One draft per signed-in account. Drafts older than 14 days are ignored.
+// One draft per signed-in account. Drafts older than 14 days are ignored, photos and drawings are dropped after 24 hours,
+// and the draft is cleared when the family logs out (a shared computer must not keep a child's photo).
 
 const KEY = (userId: string) => `ws_draft_v1_${userId}`;
 const MAX_AGE_MS = 14 * 86_400_000;
@@ -38,6 +39,8 @@ export const loadDraft = (userId: string): WorkSampleDraft | null => {
     const d = JSON.parse(raw) as WorkSampleDraft;
     if (!d || typeof d.savedAt !== 'number' || Date.now() - d.savedAt > MAX_AGE_MS) return null;
     if (d.step !== 2 && d.step !== 3) return null;
+    // Privacy: a photo or drawing kept in the browser is dropped after 24 hours (the words are kept longer).
+    if (Date.now() - d.savedAt > 86_400_000) return { ...d, photo: null, drawing: null };
     return d;
   } catch {
     return null;

@@ -14,8 +14,9 @@ import { AdminPaywallEditor } from './components/AdminPaywallEditor';
 import { AdminCodes } from './components/AdminCodes';
 import { BlueprintPopup } from './components/BlueprintPopup';
 import { HistoryPage } from './components/HistoryPage';
+import { checkStudentName } from './services/studentName';
 import { generationToDraft, GenerationRecord } from './services/generationHistory';
-import { saveDraft } from './services/workSampleDraft';
+import { saveDraft, clearDraft } from './services/workSampleDraft';
 import { AdminTextEditor } from './components/AdminTextEditor';
 import { AdminStartHereEditor } from './components/AdminStartHereEditor';
 import { RichText } from './components/RichText';
@@ -110,6 +111,7 @@ export default function App() {
   const [emailVerified, setEmailVerified] = useState(true);
   const [paywallText, setPaywallText] = useState<PaywallText>(DEFAULT_PAYWALL_TEXT);
   const [adminSection, setAdminSection] = useState<'messages' | 'payment' | 'codes' | 'text' | 'start'>('messages');
+  const [studentNameError, setStudentNameError] = useState('');
   const [siteTextDraft, setSiteTextDraft] = useState<SiteText | null>(null);
   const [startHereDraft, setStartHereDraft] = useState<StartHereContent | null>(null);
   const siteText = useSiteText();
@@ -322,7 +324,7 @@ export default function App() {
       // Only fetch records if we have students
       if (fetchedStudents.length > 0) {
         const recordArrays = await Promise.all(
-          fetchedStudents.map(student => dbService.getRecords(student.id))
+          fetchedStudents.map(student => dbService.getRecords(student.id, userToUse.id))
         );
         const allRecords = recordArrays.flat();
         console.log('📚 Loaded records from Firestore:', allRecords.length);
@@ -408,6 +410,7 @@ export default function App() {
     if (!user) return null;
     
     // Open custom modal
+    setStudentNameError('');
     setStudentModalMode('add');
     setStudentModalName('');
     setStudentModalGrade('K');
@@ -419,6 +422,9 @@ export default function App() {
 
   const executeAddStudent = async () => {
     if (!user || !studentModalName.trim()) return;
+    const checked = checkStudentName(studentModalName);
+    if (checked.ok === false) { setStudentNameError(checked.message); return; }
+    setStudentNameError('');
     
     setIsSyncing(true);
     setShowStudentModal(false);
@@ -426,7 +432,7 @@ export default function App() {
     try {
         const id = await dbService.addStudent({
             userId: user.id,
-            name: studentModalName.trim(),
+            name: checked.name,
             gradeLevel: studentModalGrade
         });
         await fetchData(user);
@@ -449,6 +455,7 @@ export default function App() {
 
   const handleEditStudent = async (student: Student) => {
     // Open custom modal
+    setStudentNameError('');
     setStudentModalMode('edit');
     setStudentModalName(student.name);
     setStudentModalGrade(student.gradeLevel);
@@ -458,13 +465,16 @@ export default function App() {
 
   const executeEditStudent = async () => {
     if (!editingStudent || !studentModalName.trim()) return;
+    const checked = checkStudentName(studentModalName);
+    if (checked.ok === false) { setStudentNameError(checked.message); return; }
+    setStudentNameError('');
     
     setIsSyncing(true);
     setShowStudentModal(false);
     
     try {
         await dbService.updateStudent(editingStudent.id, { 
-          name: studentModalName.trim(), 
+          name: checked.name, 
           gradeLevel: studentModalGrade 
         });
         await fetchData(user);
@@ -1146,7 +1156,7 @@ export default function App() {
         setEmailVerified(verified);
         return verified;
       }}
-      onLogout={async () => { await authService.logout(); setUser(null); }}
+      onLogout={async () => { clearDraft(user.id); await authService.logout(); setUser(null); }}
     />
   );
   
@@ -1694,17 +1704,21 @@ export default function App() {
             
             <div className="space-y-5">
               <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
+                <label htmlFor="student-name-input" className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
                   Student Name
                 </label>
                 <input
+                  id="student-name-input"
                   type="text"
                   value={studentModalName}
-                  onChange={(e) => setStudentModalName(e.target.value)}
-                  placeholder="Enter student name"
+                  onChange={(e) => { setStudentModalName(e.target.value); setStudentNameError(''); }}
+                  placeholder="First name and last initial, like Maya R."
+                  maxLength={30}
                   className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 outline-none font-medium text-slate-800 focus:border-[#81adb3] transition-colors"
                   autoFocus
                 />
+                <p className="text-[11px] text-slate-400 font-medium mt-2 leading-relaxed">To protect your child's privacy, use a first name and last initial only.</p>
+                {studentNameError && <p className="text-[12px] font-black text-red-500 mt-2" role="alert">{studentNameError}</p>}
               </div>
               
               <div>
@@ -2008,6 +2022,7 @@ export default function App() {
                )}
             </nav>
             <button onClick={async () => {
+              if (user) clearDraft(user.id);
               await authService.logout();
               // Navigate to home page after logout
               setActiveTab('search');
