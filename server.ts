@@ -56,4 +56,10 @@ app.get('*', (_req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+  // On Cloud Run only: keep the published database rules in step with firestore.rules (see api/lib/publishRules.ts).
+  if (process.env.K_SERVICE) {
+    import('./api/lib/publishRules.js')
+      .then(m => m.publishRulesOnStart())
+      .catch(e => console.log('[Rules] Not checked:', e?.message || e));
+  }
 });

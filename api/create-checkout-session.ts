@@ -7,10 +7,12 @@
  *   STRIPE_PRICE_ID_MONTHLY  - Price ID for the monthly plan ($9 per month)
  *   STRIPE_PRICE_ID_ANNUAL   - Price ID for the annual plan ($79 per year)
  *
- * The client POSTs { userId, userEmail, userName, plan } and receives { url }
+ * The client POSTs { userName, plan } with the family's sign-in token in the Authorization header and receives { url }.
+ * Who is paying (id and email) comes from the token, never from the request body, and the email must be verified.
  */
 
 import Stripe from 'stripe';
+import { verifySignInTokenWithEmail } from './lib/subscriptionAccess.js';
 
 const PRICE_IDS: Record<string, string | undefined> = {
   monthly: process.env.STRIPE_PRICE_ID_MONTHLY,
@@ -31,7 +33,24 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  const { userId, userEmail, userName, plan = 'annual' } = req.body || {};
+  const header = String(req.headers.authorization || '');
+  const idToken = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+  if (!idToken) return res.status(401).json({ error: 'Please sign in again.' });
+  let userId = '';
+  let userEmail = '';
+  try {
+    const who = await verifySignInTokenWithEmail(idToken);
+    if (!who.emailVerified) {
+      return res.status(403).json({ error: 'Please verify your email first. Click the link we sent you, then try again.' });
+    }
+    userId = who.uid;
+    userEmail = who.email;
+  } catch (e: any) {
+    console.error('[Stripe] Sign-in token rejected:', e?.message);
+    return res.status(401).json({ error: 'Please sign in again.' });
+  }
+
+  const { userName, plan = 'annual' } = req.body || {};
   const priceId = PRICE_IDS[plan];
 
   if (!priceId) {

@@ -86,7 +86,7 @@ export const actionFromEvent = (event: any): AccessAction | null => {
   }
 };
 
-const getAdminApp = () =>
+export const getAdminApp = () =>
   getApps()[0] ||
   initializeApp({
     credential: applicationDefault(),
@@ -103,9 +103,9 @@ export const verifySignInToken = async (idToken: string): Promise<string> => {
 };
 
 // Same check, but returns the person's id AND email (used for the admin-only code tools).
-export const verifySignInTokenWithEmail = async (idToken: string): Promise<{ uid: string; email: string }> => {
+export const verifySignInTokenWithEmail = async (idToken: string): Promise<{ uid: string; email: string; emailVerified: boolean }> => {
   const decoded = await getAuth(getAdminApp()).verifyIdToken(idToken);
-  return { uid: decoded.uid, email: String(decoded.email || '').toLowerCase() };
+  return { uid: decoded.uid, email: String(decoded.email || '').toLowerCase(), emailVerified: decoded.email_verified === true };
 };
 
 // The Stripe customer record saved on the person's account when they paid (empty if none).
