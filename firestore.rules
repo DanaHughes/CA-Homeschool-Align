@@ -40,38 +40,25 @@ service cloud.firestore {
       allow write: if false;
     }
     
-    // Students collection - users can only access their own students
+    // Students collection - a family can only see and change its OWN students.
+    // (A "list" must be filtered by userId, so nobody can ask for everyone's students.)
     match /students/{studentId} {
-      // Allow list queries - Firestore will only return documents that pass the read rule below
-      allow list: if isAuthenticated();
-      
-      // Allow read/write of individual documents if userId matches
-      allow read, write: if isAuthenticated() && 
-        (resource == null || resource.data.userId == request.auth.uid);
-      
-      // Allow create if userId matches
-      allow create: if isAuthenticated() && 
-        request.resource.data.userId == request.auth.uid;
+      allow get, list: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == resource.data.userId;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
-    
-    // Records collection - users can only access records for their own students
+
+    // Records collection - same rule: only the family's own records.
     match /records/{recordId} {
-      // Allow list queries - Firestore will only return documents that pass the read rule below
-      allow list: if isAuthenticated();
-      
-      // Allow read if the record's userId matches the authenticated user
-      allow read: if isAuthenticated() && 
-        (resource == null || resource.data.userId == request.auth.uid);
-      
-      // Allow write (update/delete) if userId matches
-      allow write: if isAuthenticated() && 
-        (resource == null || resource.data.userId == request.auth.uid);
-      
-      // Allow create if userId matches
-      allow create: if isAuthenticated() && 
-        request.resource.data.userId == request.auth.uid;
+      allow get, list: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == resource.data.userId;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
-    
+
     // Generation history - every generated work sample, private to the family that made it.
     match /generations/{generationId} {
       allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
@@ -84,15 +71,11 @@ service cloud.firestore {
 
     // Feature requests collection - users can create and read their own requests
     match /feature_requests/{requestId} {
-      allow list: if isAuthenticated();
-      allow read: if isAuthenticated() && 
-        (resource == null || resource.data.userId == request.auth.uid);
-      allow create: if isAuthenticated() && 
-        request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && 
-        resource.data.userId == request.auth.uid;
+      allow get, list: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
-    
+
     // In-app messages (bug reports): anyone signed in can send one as themselves;
     // only the admin can read, mark handled, or delete.
     match /messages/{messageId} {
@@ -111,9 +94,9 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // System stats collection - allow authenticated users to read and write (for usage tracking)
+    // The old browser-side usage counter is no longer used (limits are enforced on the server).
     match /system_stats/{statId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if false;
     }
   }
 }

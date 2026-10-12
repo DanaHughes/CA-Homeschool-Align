@@ -120,11 +120,12 @@ export const dbService = {
     await firestore.deleteDoc(firestore.doc(db, 'students', studentId));
   },
 
-  getRecords: async (studentId: string): Promise<LearningRecord[]> => {
+  getRecords: async (studentId: string, userId: string): Promise<LearningRecord[]> => {
     // We remove the Firestore orderBy and sort in-memory.
     // This bypasses the need for the user to create composite indexes in the Firebase Console.
     const q = firestore.query(
       firestore.collection(db, 'records'), 
+      firestore.where('userId', '==', userId),
       firestore.where('studentId', '==', studentId)
     );
     const querySnapshot = await firestore.getDocs(q);
