@@ -23,10 +23,11 @@ const CodeCard: React.FC<CodeCardProps> = ({ c, copied, onCopy, onToggle, onChan
   const [months, setMonths] = useState(String(c.months));
   const [maxUses, setMaxUses] = useState(String(c.maxUses));
   const [note, setNote] = useState(c.note);
+  const [email, setEmail] = useState(c.allowedEmail || '');
   const [saving, setSaving] = useState(false);
 
   const startEdit = () => {
-    setName(c.code); setMonths(String(c.months)); setMaxUses(String(c.maxUses)); setNote(c.note);
+    setName(c.code); setMonths(String(c.months)); setMaxUses(String(c.maxUses)); setNote(c.note); setEmail(c.allowedEmail || '');
     setEditing(true);
   };
 
@@ -38,6 +39,7 @@ const CodeCard: React.FC<CodeCardProps> = ({ c, copied, onCopy, onToggle, onChan
         months: Number(months),
         maxUses: Number(maxUses),
         note: note.trim(),
+        allowedEmail: email.trim(),
         newCode: name.trim() && name.trim().toUpperCase() !== c.code ? name.trim() : undefined
       });
       setEditing(false);
@@ -66,7 +68,8 @@ const CodeCard: React.FC<CodeCardProps> = ({ c, copied, onCopy, onToggle, onChan
         <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${c.active ? 'bg-[#fddc96] text-slate-800' : 'bg-slate-100 text-slate-500'}`}>{c.active ? 'On' : 'Off'}</span>
       </div>
       <p className="text-sm text-slate-600 mb-1">{c.months} free {c.months === 1 ? 'month' : 'months'} • used by {c.uses} of {c.maxUses} {c.maxUses === 1 ? 'family' : 'families'} • made {day(c.createdAt)}</p>
-      {c.note && <p className="text-xs text-slate-500 mb-3">Note: {c.note}</p>}
+      {c.note && <p className="text-xs text-slate-500 mb-1">Note: {c.note}</p>}
+      {c.allowedEmail && <p className="text-xs font-black text-[#367c92] mb-3">Only for: {c.allowedEmail}</p>}
       {c.redemptions.length > 0 && (
         <ul className="text-xs text-slate-600 space-y-1 mb-4">
           {c.redemptions.map(r => (
@@ -93,6 +96,10 @@ const CodeCard: React.FC<CodeCardProps> = ({ c, copied, onCopy, onToggle, onChan
               <input id={`e-uses-${c.code}`} type="number" min={Math.max(1, c.uses)} value={maxUses} onChange={e => setMaxUses(e.target.value)} className={inputCls} />
               <p className="text-[11px] text-slate-400 font-medium mt-2">{c.uses} {c.uses === 1 ? 'family has' : 'families have'} used it so far.</p>
             </div>
+          </div>
+          <div>
+            <label className={labelCls} htmlFor={`e-email-${c.code}`}>Only for this email address</label>
+            <input id={`e-email-${c.code}`} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Empty means anyone with the code" className={inputCls} />
           </div>
           <div>
             <label className={labelCls} htmlFor={`e-note-${c.code}`}>Note to yourself</label>
@@ -123,6 +130,7 @@ export const AdminCodes: React.FC = () => {
   const [maxUses, setMaxUses] = useState('1');
   const [note, setNote] = useState('');
   const [custom, setCustom] = useState('');
+  const [onlyEmail, setOnlyEmail] = useState('');
   const [creating, setCreating] = useState(false);
   const [justMade, setJustMade] = useState('');
   const [copied, setCopied] = useState('');
@@ -161,11 +169,13 @@ export const AdminCodes: React.FC = () => {
         code: custom.trim() || undefined,
         months: Number(months),
         maxUses: Number(maxUses),
-        note: note.trim()
+        note: note.trim(),
+        allowedEmail: onlyEmail.trim() || undefined
       });
       setJustMade(made);
       setNote('');
       setCustom('');
+      setOnlyEmail('');
       await load();
     } catch (err: any) {
       setError(err?.message || 'Could not make the code.');
@@ -203,6 +213,10 @@ export const AdminCodes: React.FC = () => {
         <div>
           <label className={label} htmlFor="code-note">Note to yourself (only you see this)</label>
           <input id="code-note" type="text" value={note} onChange={e => setNote(e.target.value)} placeholder="For example: my friend Sam" className={input} />
+        </div>
+        <div>
+          <label className={label} htmlFor="code-email">Only for this email address (optional)</label>
+          <input id="code-email" type="email" value={onlyEmail} onChange={e => setOnlyEmail(e.target.value)} placeholder="Leave empty to let anyone with the code use it" className={input} />
         </div>
         <div>
           <label className={label} htmlFor="code-custom">Your own code (optional)</label>

@@ -64,7 +64,8 @@ export default async function handler(req: any, res: any) {
         code: body.code,
         months: body.months,
         maxUses: body.maxUses,
-        note: body.note
+        note: body.note,
+        allowedEmail: body.allowedEmail
       }, now);
       if (result.ok === false) return res.status(400).json({ error: codeErrorMessage(result.error), code: result.error });
       return res.status(200).json({ code: result.display });
@@ -81,7 +82,7 @@ export default async function handler(req: any, res: any) {
 
     if (body.action === 'update') {
       const id = normalizeCode(body.code);
-      const result = await updateCode(adminStore, id, { months: body.months, maxUses: body.maxUses, note: body.note });
+      const result = await updateCode(adminStore, id, { months: body.months, maxUses: body.maxUses, note: body.note, allowedEmail: body.allowedEmail });
       if (result.ok === false) return res.status(400).json({ error: codeErrorMessage(result.error), code: result.error });
 
       // Renaming: copy the code and everyone who used it to the new name, then remove the old one.
@@ -121,6 +122,7 @@ export default async function handler(req: any, res: any) {
           uses: data.uses || 0,
           active: data.active !== false,
           note: data.note || '',
+          allowedEmail: data.allowedEmail || '',
           createdAt: data.createdAt || 0,
           redemptions: used.docs
             .map(u => u.data())
