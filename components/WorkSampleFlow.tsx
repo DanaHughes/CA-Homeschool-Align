@@ -416,7 +416,8 @@ export const WorkSampleFlow: React.FC<Props> = ({
         subject,
         activity,
         hook: opt.hook,
-        standardDescription: opt.standard.description
+        standardDescription: opt.standard.description,
+        imageData: photo ? photo.split(',')[1] : undefined
       });
       const d = pickDesign(c.recommended, readHistory(studentId));
       writeHistory(studentId, d);

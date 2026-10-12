@@ -76,6 +76,8 @@ RULES:
 3. NEVER mention sentence counts, paragraph counts, or words like "approaching", "above", "below", or "on grade level".
 4. NEVER mention standards, standard codes, or frameworks.
 5. Speak directly to the child. Return ONLY the JSON requested.
+6. Base the page ONLY on what the family described and/or what is visible in the photo (if a photo is attached). NEVER invent an experiment, a comparison, a measurement, a tool, a result, or any other detail that was not described or visible. The line "What the child can show" comes from an earlier automatic step and may contain details that are not true for this activity: ignore any part of it that the description or photo does not support.
+7. If you are not sure what the child did, write a general prompt such as asking the child to tell what they did, what they saw or noticed, and what they learned. A simple true prompt is better than a specific wrong one.
 `;
 
 export const buildExplainPrompt = (query: string, description: string): string => `
@@ -308,6 +310,7 @@ export default async function handler(req: any, res: any) {
       const activity = str(body.activity, 2000);
       const hook = str(body.hook, 600);
       const standardDescription = str(body.standardDescription, 1000);
+      const workImage = str(body.imageData, 10_000_000);
       const prompt = `
 Grade: ${grade}
 Subject: ${subject}
@@ -322,10 +325,12 @@ Write the words for two possible page layouts:
 - organizerLabels: exactly 3 short box labels (4 words or fewer each).
 - organizerCenter: a short caption (4 words or fewer) for the picture in the middle.
 - recommended: "organizer" if the skill is about describing parts, steps, sequences, comparing, or sorting; otherwise "journal".`;
+      const workParts: any[] = [{ text: prompt }];
+      if (workImage) workParts.push({ inlineData: { mimeType: 'image/jpeg', data: workImage } });
       try {
         const response = await ai.models.generateContent({
           model: MODEL_NAME,
-          contents: [{ parts: [{ text: prompt }] }],
+          contents: [{ parts: workParts }],
           config: {
             systemInstruction: WORKPAGE_SYSTEM_INSTRUCTION,
             responseMimeType: 'application/json',

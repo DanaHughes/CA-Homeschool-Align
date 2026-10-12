@@ -115,6 +115,7 @@ export const generateWorkPageContent = async (args: {
   activity: string;
   hook: string;
   standardDescription: string;
+  imageData?: string; // the family's photo (base64), so the page text matches what really happened
 }): Promise<WorkPageContent> => {
   try {
     const data = await callGemini({ action: 'workpage', ...args });
