@@ -8,6 +8,7 @@ export interface PromoCode {
   uses: number;
   active: boolean;
   note: string;
+  allowedEmail: string;
   createdAt: number;
   redemptions: CodeRedemption[];
 }
@@ -33,14 +34,14 @@ export const redeemPromoCode = async (code: string): Promise<{ proUntil: number;
 
 // Admin only (the server refuses anyone else).
 export const listPromoCodes = async (): Promise<PromoCode[]> => (await call({ action: 'list' })).codes as PromoCode[];
-export const createPromoCode = async (input: { code?: string; months: number; maxUses: number; note?: string }): Promise<string> =>
+export const createPromoCode = async (input: { code?: string; months: number; maxUses: number; note?: string; allowedEmail?: string }): Promise<string> =>
   (await call({ action: 'create', ...input })).code as string;
 export const setPromoCodeActive = async (code: string, active: boolean): Promise<void> => {
   await call({ action: 'setActive', code, active });
 };
 export const updatePromoCode = async (
   code: string,
-  changes: { months?: number; maxUses?: number; note?: string; newCode?: string }
+  changes: { months?: number; maxUses?: number; note?: string; newCode?: string; allowedEmail?: string }
 ): Promise<void> => {
   await call({ action: 'update', code, ...changes });
 };

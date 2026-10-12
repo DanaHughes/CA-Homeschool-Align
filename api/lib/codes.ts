@@ -9,6 +9,7 @@
  *
  * Database paths:  codes/{CODE}   and   codes/{CODE}/redemptions/{uid}
  */
+import { normalizeEmail } from './entitlements.js';
 import type { Store } from './entitlements.js';
 
 export type CodeError =
@@ -18,7 +19,8 @@ export type CodeError =
   | 'CODE_NOT_FOUND'
   | 'CODE_OFF'
   | 'CODE_RAN_OUT'
-  | 'CODE_ALREADY_USED_BY_YOU';
+  | 'CODE_ALREADY_USED_BY_YOU'
+  | 'CODE_WRONG_EMAIL';
 
 export interface CodeWho {
   uid: string;
@@ -47,6 +49,7 @@ export const addMonths = (ms: number, months: number): number => {
 
 export interface NewCode {
   code?: string;
+  allowedEmail?: string; // if set, only this email address (Gmail dots and +tags ignored) can use the code
   months: number;
   maxUses: number;
   note?: string;
@@ -77,6 +80,7 @@ export const createCode = async (
         maxUses,
         uses: 0,
         active: true,
+        allowedEmail: input.allowedEmail ? normalizeEmail(input.allowedEmail) : '',
         note: String(input.note || '').slice(0, 200),
         createdAt: now
       });
@@ -100,6 +104,7 @@ export const redeemCode = async (store: Store, who: CodeWho, raw: unknown, now: 
     const code = await tx.get(`codes/${id}`);
     if (!code) return { ok: false, error: 'CODE_NOT_FOUND' } as RedeemResult;
     if (code.active === false) return { ok: false, error: 'CODE_OFF' } as RedeemResult;
+    if (code.allowedEmail && normalizeEmail(who.email) !== code.allowedEmail) return { ok: false, error: 'CODE_WRONG_EMAIL' } as RedeemResult;
 
     const already = await tx.get(`codes/${id}/redemptions/${who.uid}`);
     if (already) return { ok: false, error: 'CODE_ALREADY_USED_BY_YOU' } as RedeemResult;
@@ -126,6 +131,7 @@ export interface CodePatch {
   months?: number;
   maxUses?: number;
   note?: string;
+  allowedEmail?: string; // '' removes the restriction
 }
 
 // Dana edits a code: free months, how many families may use it, and the note.
@@ -153,6 +159,7 @@ export const updateCode = async (
       update.maxUses = maxUses;
     }
     if (patch.note !== undefined) update.note = String(patch.note).slice(0, 200);
+    if (patch.allowedEmail !== undefined) update.allowedEmail = patch.allowedEmail ? normalizeEmail(patch.allowedEmail) : '';
     tx.set(`codes/${id}`, update, true);
     return { ok: true } as const;
   });
@@ -166,6 +173,7 @@ export const codeErrorMessage = (error: CodeError): string => {
     case 'CODE_RAN_OUT': return 'I am sorry, that code has run out.';
     case 'CODE_ALREADY_USED_BY_YOU': return 'You have already used that code on this account.';
     case 'USES_BELOW_USED': return 'The number of families cannot be lower than the number who already used the code. To stop new families, use Turn off.';
+    case 'CODE_WRONG_EMAIL': return 'That code was made for a different email address.';
     case 'CODE_EXISTS': return 'A code with that name already exists. Please pick a different one.';
     default: return 'Please check the number of months (1 to 60), the number of families (1 or more), and the code (4 to 24 letters or numbers).';
   }
