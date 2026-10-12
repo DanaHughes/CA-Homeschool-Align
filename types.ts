@@ -93,4 +93,4 @@ export interface FeatureRequest {
   timestamp: number;
 }
 
-export type TabView = 'search' | 'students' | 'features' | 'plan' | 'admin';
+export type TabView = 'search' | 'history' | 'students' | 'features' | 'plan' | 'admin';

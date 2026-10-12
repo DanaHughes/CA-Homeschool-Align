@@ -139,6 +139,29 @@ export const dbService = {
     return docRef.id;
   },
 
+  // Generation history (every generated work sample, saved automatically).
+  addGeneration: async (generation: any): Promise<string> => {
+    const docRef = await firestore.addDoc(firestore.collection(db, 'generations'), generation);
+    return docRef.id;
+  },
+
+  updateGeneration: async (id: string, patch: any): Promise<void> => {
+    await firestore.updateDoc(firestore.doc(db, 'generations', id), patch);
+  },
+
+  getGenerations: async (userId: string): Promise<any[]> => {
+    // No orderBy here (it would need an index); sorted newest first in memory.
+    const q = firestore.query(firestore.collection(db, 'generations'), firestore.where('userId', '==', userId));
+    const snap = await firestore.getDocs(q);
+    return snap.docs
+      .map(d => ({ id: d.id, ...d.data() } as any))
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  },
+
+  deleteGeneration: async (id: string): Promise<void> => {
+    await firestore.deleteDoc(firestore.doc(db, 'generations', id));
+  },
+
   updateRecord: async (recordId: string, data: Partial<LearningRecord>): Promise<void> => {
     const ref = firestore.doc(db, 'records', recordId);
     await firestore.updateDoc(ref, data);

@@ -13,6 +13,9 @@ import { PlanCards } from './components/PlanCards';
 import { AdminPaywallEditor } from './components/AdminPaywallEditor';
 import { AdminCodes } from './components/AdminCodes';
 import { BlueprintPopup } from './components/BlueprintPopup';
+import { HistoryPage } from './components/HistoryPage';
+import { generationToDraft, GenerationRecord } from './services/generationHistory';
+import { saveDraft } from './services/workSampleDraft';
 import { AdminTextEditor } from './components/AdminTextEditor';
 import { AdminStartHereEditor } from './components/AdminStartHereEditor';
 import { RichText } from './components/RichText';
@@ -1110,6 +1113,17 @@ export default function App() {
 
   const activeViewingStudent = students.find(s => s.id === viewingStudentId);
   const isPro = user?.isPaid || hasCodeAccess(user) || (user && PRO_FREE_EMAILS.includes(user.email.toLowerCase()));
+  // History: put a saved work sample back on the Generate screen, or add it to a student's Vault.
+  const openGeneration = (g: GenerationRecord) => {
+    if (!user) return;
+    saveDraft(user.id, generationToDraft(g));
+    setActiveTab('search');
+    window.scrollTo({ top: 0 });
+  };
+  const addGenerationToVault = async (g: GenerationRecord, studentId: string): Promise<boolean> => {
+    if (!g.chosen?.standard) return false;
+    return saveWorkSampleRecord({ standard: g.chosen.standard, studentId, activityText: g.activity, matchLogic: g.chosen.hook || '' });
+  };
   const handleCodeRedeemed = (proUntil: number) => {
     setUser(u => (u ? { ...u, proUntil } : u));
     setShowPaywall(false);
@@ -1880,6 +1894,16 @@ export default function App() {
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 <span className="text-[8px] font-black uppercase tracking-widest">Generate</span>
             </button>
+            <button
+                onClick={() => {
+                  setActiveTab('history');
+                  setViewingStudentId(null);
+                }}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all duration-300 ${activeTab === 'history' ? 'text-[#e7b64f] scale-110' : 'text-slate-500 opacity-60'}`}
+            >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span className="text-[8px] font-black uppercase tracking-widest">History</span>
+            </button>
             <button 
                 onClick={() => { 
                   setActiveTab('students'); 
@@ -1943,6 +1967,10 @@ export default function App() {
                  setViewingStudentId(null);
                }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'search' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Generate</button>
                <button onClick={() => { 
+                 setActiveTab('history'); 
+                 setViewingStudentId(null);
+               }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'history' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>History</button>
+               <button onClick={() => { 
                  setActiveTab('students'); 
                  setViewingStudentId(null);
                }} className={`text-[10px] font-black uppercase tracking-[0.2em] ${activeTab === 'students' ? 'text-[#e7b64f]' : 'text-slate-400 hover:text-slate-600 transition-colors'}`}>Vault</button>
@@ -1998,6 +2026,10 @@ export default function App() {
                 <button onClick={() => setShowPaywall(true)} className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 text-[10px] font-black uppercase tracking-[0.2em] shadow-md hover:brightness-105 active:scale-95 transition-all">See plans</button>
                 <button onClick={() => setLowMatchesDismissed(true)} aria-label="Dismiss" className="text-slate-400 hover:text-slate-600 text-lg leading-none font-black px-2">×</button>
               </div>
+            )}
+
+            {activeTab === 'history' && user && (
+              <HistoryPage user={user} students={students} onOpen={openGeneration} onAddToVault={addGenerationToVault} />
             )}
 
             {activeTab === 'plan' && user && (
