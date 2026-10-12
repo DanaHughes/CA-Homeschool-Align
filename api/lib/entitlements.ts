@@ -14,6 +14,8 @@
  * The numbers can be changed by Dana in the Admin tab (database document settings/limits).
  */
 
+import { createHash } from 'node:crypto';
+
 export interface Limits {
   trialDays: number;
   trialGenerations: number;
@@ -78,8 +80,8 @@ export const normalizeEmail = (email: string): string => {
   return `${local}@${domain}`;
 };
 
-// A safe document name for the email key (the database does not allow "/" in names).
-export const emailKey = (email: string): string => normalizeEmail(email).replace(/[\/#?\[\]]/g, '_');
+// The free-trial record is keyed by a ONE-WAY HASH of the normalized email, so no readable email address is kept for it.
+export const emailKey = (email: string): string => createHash('sha256').update(normalizeEmail(email)).digest('hex');
 
 export const isComplimentary = (email: string): boolean => COMPLIMENTARY_EMAILS.includes(String(email || '').toLowerCase());
 

@@ -792,6 +792,7 @@ export const WorkSampleFlow: React.FC<Props> = ({
                 className="flex-1 min-w-[200px] bg-transparent outline-none font-semibold text-lg text-slate-700 placeholder:text-slate-300 py-3"
               />
             </div>
+            <p className="text-[11px] text-slate-400 font-medium leading-relaxed px-2">{siteText.photoNotice}</p>
           </div>
 
           {formError && <p className="text-sm font-bold text-red-500" role="alert">{formError}</p>}

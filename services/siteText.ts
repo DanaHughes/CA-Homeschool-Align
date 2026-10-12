@@ -31,6 +31,14 @@ export const TEXT_DEFS: TextDef[] = [
   { key: 'loginIntro3', group: 'Sign-in page', label: 'Last line (bold)', help: 'The short bold line at the end.', rows: 1, limit: 200, fallback: 'Developed by a CA charter homeschool teacher with you in mind.' },
 
   {
+    key: 'newsletterConsent', group: 'Sign-in page', label: 'Newsletter checkbox (sign-up)', help: 'The optional, unticked box on the sign-up form. Anyone who ticks it is recorded as agreeing to emails.', rows: 2, limit: 250,
+    fallback: 'Yes, send me homeschool tips and updates from Charter Homeschool Help by email. (Optional. You can unsubscribe at any time.)'
+  },
+  {
+    key: 'photoNotice', group: 'Work sample options page', label: 'Notice under the photo box', help: 'Shown on the first Generate screen, under the "Add a photo" box.', rows: 3, limit: 300,
+    fallback: "Photos are sent securely to Google's AI to help write your work sample. This app does not store them on its servers. Please avoid photos that show faces, names, or other personal details."
+  },
+  {
     key: 'optionsHeading', group: 'Work sample options page', label: 'Heading', help: 'The sentence above the work sample options.', rows: 3, limit: 300,
     fallback: 'Click on the work sample option that sounds like the best fit for your child, or that best supports an I Can Statement or standard goal for your child.'
   },
