@@ -28,7 +28,8 @@ export const AuthGate: React.FC<AuthGateProps> = ({ onLogin, onShowTerms }) => {
   const [isLoading, setIsLoading] = useState(false);
   
   const [requiredConsentsAccepted, setRequiredConsentsAccepted] = useState(false);
-  const [facebookAccepted, setFacebookAccepted] = useState(true);
+  // Optional and NOT ticked by default: only people who tick it are recorded as agreeing to the newsletter.
+  const [newsletterAccepted, setNewsletterAccepted] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,10 +44,11 @@ export const AuthGate: React.FC<AuthGateProps> = ({ onLogin, onShowTerms }) => {
     setIsLoading(true);
     try {
       if (mode === 'signup') {
-        const user = await authService.signUp(name, email, password, { 
-          terms: true, 
-          newsletter: true, 
-          facebook: facebookAccepted 
+        const user = await authService.signUp(name, email, password, {
+          terms: true,
+          newsletter: newsletterAccepted,
+          ...(newsletterAccepted ? { newsletterAt: Date.now() } : {}),
+          facebook: false
         });
         setSuccessMsg("Account created! Redirecting to classroom...");
         setTimeout(() => onLogin(user), 1500);
@@ -134,6 +136,13 @@ export const AuthGate: React.FC<AuthGateProps> = ({ onLogin, onShowTerms }) => {
                     <div className="text-[12px] text-slate-500 font-medium leading-relaxed">
                         I agree to the academic tracking <button type="button" onClick={(e) => { e.preventDefault(); onShowTerms(); }} className="text-[#81adb3] font-bold hover:underline">terms and conditions</button>. <span className="text-red-400 font-bold">*</span>
                     </div>
+                </label>
+                <label className="flex items-start gap-4 cursor-pointer group">
+                    <input
+                        type="checkbox" checked={newsletterAccepted} onChange={(e) => setNewsletterAccepted(e.target.checked)}
+                        className="mt-1 w-5 h-5 rounded-lg border-slate-300 text-[#81adb3] focus:ring-[#81adb3] transition-all"
+                    />
+                    <div className="text-[12px] text-slate-500 font-medium leading-relaxed">{siteText.newsletterConsent}</div>
                 </label>
             </div>
           )}

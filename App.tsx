@@ -112,6 +112,7 @@ export default function App() {
   const [paywallText, setPaywallText] = useState<PaywallText>(DEFAULT_PAYWALL_TEXT);
   const [adminSection, setAdminSection] = useState<'messages' | 'payment' | 'codes' | 'text' | 'start'>('messages');
   const [studentNameError, setStudentNameError] = useState('');
+  const [accountDeleted, setAccountDeleted] = useState(false);
   const [siteTextDraft, setSiteTextDraft] = useState<SiteText | null>(null);
   const [startHereDraft, setStartHereDraft] = useState<StartHereContent | null>(null);
   const siteText = useSiteText();
@@ -1134,6 +1135,16 @@ export default function App() {
     if (!g.chosen?.standard) return false;
     return saveWorkSampleRecord({ standard: g.chosen.standard, studentId, activityText: g.activity, matchLogic: g.chosen.hook || '' });
   };
+  // After "Delete my account and data": clear what this browser kept, sign out, and say it is done.
+  const handleAccountDeleted = async () => {
+    try {
+      if (user) clearDraft(user.id);
+      Object.keys(localStorage).filter(k => k.startsWith('ws_')).forEach(k => localStorage.removeItem(k));
+    } catch { /* nothing to clear */ }
+    try { await authService.logout(); } catch { /* the account is already gone */ }
+    setAccountDeleted(true);
+    setUser(null);
+  };
   const handleCodeRedeemed = (proUntil: number) => {
     setUser(u => (u ? { ...u, proUntil } : u));
     setShowPaywall(false);
@@ -1143,6 +1154,15 @@ export default function App() {
   const isComplimentary = !!user && PRO_FREE_EMAILS.includes(user.email.toLowerCase());
 
   if (isAppLoading) return null;
+  if (!user && accountDeleted) return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 font-sans">
+      <div className="bg-white p-10 md:p-14 rounded-[3.5rem] shadow-xl max-w-md w-full border border-slate-100 text-center animate-fade-in">
+        <h1 className="text-3xl font-black text-slate-800 tracking-tighter leading-tight mb-3">Your account and data were deleted</h1>
+        <p className="text-sm text-slate-600 leading-relaxed mb-8">Thank you for trying Homeschool Work Sample Pro. You are welcome back any time.</p>
+        <button onClick={() => setAccountDeleted(false)} className="w-full px-8 py-4 rounded-full bg-gradient-to-r from-[#e7b64f] to-[#f4989c] text-slate-800 font-black text-[11px] uppercase tracking-[0.2em] shadow-lg min-h-[44px]">Back to sign in</button>
+      </div>
+    </div>
+  );
   if (!user) return <AuthGate onLogin={setUser} onShowTerms={() => setShowTermsModal(true)} />;
 
   // Everyone must verify their email before using the app (the emails also go to the newsletter),
@@ -2058,6 +2078,7 @@ export default function App() {
                 trial={trial}
                 onUpgrade={() => setShowPaywall(true)}
                 onCodeRedeemed={handleCodeRedeemed}
+                onAccountDeleted={handleAccountDeleted}
               />
             )}
 

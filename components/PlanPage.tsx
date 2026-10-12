@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User } from '../types';
 import { PlanCards } from './PlanCards';
 import { RedeemCode } from './RedeemCode';
+import { DeleteAccountCard } from './DeleteAccountCard';
 import { hasCodeAccess } from '../services/accessHelpers';
 import { planLabel } from '../services/plans';
 import { openBillingPortal } from '../services/billingService';
@@ -14,12 +15,13 @@ interface PlanPageProps {
   trial: TrialStatus;
   onUpgrade: () => void;
   onCodeRedeemed: (proUntil: number) => void;
+  onAccountDeleted: () => void;
 }
 
 const prettyDate = (ms?: number): string =>
   ms ? new Date(ms).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '';
 
-export const PlanPage: React.FC<PlanPageProps> = ({ user, isPro, isComplimentary, trial, onUpgrade, onCodeRedeemed }) => {
+export const PlanPage: React.FC<PlanPageProps> = ({ user, isPro, isComplimentary, trial, onUpgrade, onCodeRedeemed, onAccountDeleted }) => {
   const [isOpening, setIsOpening] = useState(false);
   const [error, setError] = useState('');
 
@@ -104,6 +106,7 @@ export const PlanPage: React.FC<PlanPageProps> = ({ user, isPro, isComplimentary
           <div className="mt-6 bg-red-50 text-red-500 text-[11px] font-black p-4 rounded-2xl border border-red-100">{error}</div>
         )}
       </div>
+      <DeleteAccountCard hasSubscription={!!user.stripeSubscriptionId} isComplimentary={isComplimentary} onDeleted={onAccountDeleted} />
     </div>
   );
 };

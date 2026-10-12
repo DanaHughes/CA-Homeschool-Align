@@ -29,6 +29,7 @@ export interface User {
   consents: {
     terms: boolean;
     newsletter: boolean;
+    newsletterAt?: number; // when they ticked the newsletter box (proof of consent)
     facebook: boolean;
   };
 }
