@@ -5,7 +5,8 @@
  *  - Paying families, families with an unexpired access code, and the complimentary accounts may generate.
  *  - Everyone else gets a free trial: 5 generations, available for 7 days. The 7 days start at the
  *    first generation. Whichever runs out first ends the trial.
- *  - A verified email is required for the trial. Throwaway-email sites are refused. One trial per real
+ *  - A verified email is required for EVERYTHING (Dana, 2026-10-12: the emails feed her newsletter), except the
+ *    complimentary accounts. Throwaway-email sites are refused for the trial. One trial per real
  *    inbox (Gmail dots and +tags count as the same address).
  *  - A global daily cap on free generations is a hard ceiling on cost.
  *  - Paying and code users also have a daily and a monthly safety limit.
@@ -123,6 +124,7 @@ const isPro = (user: any, email: string, now: number): boolean =>
 // Called once at the start of every generation (the "search" step).
 export const authorizeGeneration = async (store: Store, who: Who, limits: Limits, now: number): Promise<Decision> => {
   return store.runTransaction(async tx => {
+    if (!isComplimentary(who.email) && !who.emailVerified) return { ok: false, code: 'EMAIL_NOT_VERIFIED' } as Decision;
     const user = await tx.get(`users/${who.uid}`);
     const pro = isPro(user, who.email, now);
 
@@ -174,6 +176,7 @@ export const authorizeGeneration = async (store: Store, who: Who, limits: Limits
 // Called for the steps that follow a generation (explain, explainMany, workpage).
 export const authorizeFollowup = async (store: Store, who: Who, limits: Limits, now: number): Promise<Decision> => {
   return store.runTransaction(async tx => {
+    if (!isComplimentary(who.email) && !who.emailVerified) return { ok: false, code: 'EMAIL_NOT_VERIFIED' } as Decision;
     const user = await tx.get(`users/${who.uid}`);
     if (isPro(user, who.email, now)) return { ok: true, pro: true } as Decision;
 
@@ -202,6 +205,7 @@ export const refundGeneration = async (store: Store, who: Who, now: number): Pro
 // The Vault's "narrative summary" stays available after the trial, with a small daily limit.
 export const authorizeNarrative = async (store: Store, who: Who, limits: Limits, now: number): Promise<Decision> => {
   return store.runTransaction(async tx => {
+    if (!isComplimentary(who.email) && !who.emailVerified) return { ok: false, code: 'EMAIL_NOT_VERIFIED' } as Decision;
     const user = await tx.get(`users/${who.uid}`);
     const pro = isPro(user, who.email, now);
     if (isComplimentary(who.email)) return { ok: true, pro } as Decision;

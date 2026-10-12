@@ -23,14 +23,14 @@ import { useSiteText, useStartHere, applySiteText, applyStartHere } from './serv
 import { SiteText, fillCount } from './services/siteText';
 import { StartHereContent } from './services/startHereContent';
 import { hasCodeAccess } from './services/accessHelpers';
-import { VerifyEmailBanner } from './components/VerifyEmailBanner';
+import { VerifyEmailGate } from './components/VerifyEmailGate';
 import { TrialStatus, computeTrial, loadTrialStatus, trialSummary } from './services/trialService';
 import { DEFAULT_PAYWALL_TEXT, PaywallText, mergePaywallText } from './services/paywallText';
 import { InstallPrompt, InstallDirections } from './components/InstallPrompt';
 import { buildVaultPdf } from './services/vaultPdf';
 import { downloadBlob } from './services/pdfExport';
 
-const PRO_FREE_EMAILS = ['demo@cahomeschool.com', 'dana2andrea@gmail.com'];
+const PRO_FREE_EMAILS = ['demo@cahomeschool.com', 'dana2andrea@gmail.com', 'thelearninglabhubinfo@gmail.com'];
 const APP_VERSION = "1.6.0"; 
 
 const ADMIN_EMAIL = 'dana2andrea@gmail.com';
@@ -1134,6 +1134,21 @@ export default function App() {
 
   if (isAppLoading) return null;
   if (!user) return <AuthGate onLogin={setUser} onShowTerms={() => setShowTermsModal(true)} />;
+
+  // Everyone must verify their email before using the app (the emails also go to the newsletter),
+  // except the complimentary accounts.
+  if (!emailVerified && !PRO_FREE_EMAILS.includes(user.email.toLowerCase())) return (
+    <VerifyEmailGate
+      email={user.email}
+      onResend={authService.resendVerification}
+      onCheck={async () => {
+        const verified = await authService.refreshVerification();
+        setEmailVerified(verified);
+        return verified;
+      }}
+      onLogout={async () => { await authService.logout(); setUser(null); }}
+    />
+  );
   
   if (paywallPreview) return <AccessGate
     user={user}
@@ -2004,18 +2019,6 @@ export default function App() {
       {user && <InstallPrompt />}
 
       <main className="flex-grow max-w-7xl mx-auto px-6 py-12 w-full z-10 mb-20">
-            {user && !isPro && !emailVerified && (
-              <VerifyEmailBanner
-                email={user.email}
-                onResend={authService.resendVerification}
-                onCheck={async () => {
-                  const verified = await authService.refreshVerification();
-                  setEmailVerified(verified);
-                  return verified;
-                }}
-              />
-            )}
-
             {activeTab === 'search' && user && !isPro && emailVerified && !lowMatchesDismissed && (trial.over || (trial.started && (trial.remaining <= 2 || trial.daysLeft <= 2))) && (
               <div className="max-w-4xl mx-auto mb-8 bg-[#fddc96]/40 border border-[#e7b64f]/40 rounded-[2rem] px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 animate-fade-in no-print">
                 <p className="flex-grow text-[11px] font-black uppercase tracking-widest text-slate-700">

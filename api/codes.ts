@@ -32,7 +32,7 @@ export default async function handler(req: any, res: any) {
   const idToken = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
   if (!idToken) return res.status(401).json({ error: 'Please sign in again.' });
 
-  let who: { uid: string; email: string };
+  let who: { uid: string; email: string; emailVerified: boolean };
   try {
     who = await verifySignInTokenWithEmail(idToken);
   } catch (error: any) {
@@ -45,6 +45,9 @@ export default async function handler(req: any, res: any) {
 
   try {
     if (body.action === 'redeem') {
+      if (!who.emailVerified) {
+        return res.status(403).json({ error: 'Please verify your email first. Click the link we sent you, then try your code again.', code: 'EMAIL_NOT_VERIFIED' });
+      }
       if (tooManyTries(who.uid, now)) {
         return res.status(429).json({ error: 'Too many tries. Please wait a little while and try again.' });
       }

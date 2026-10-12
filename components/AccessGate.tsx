@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { MONTHLY_PRICE, YEARLY_PRICE, YEARLY_SAVE_PERCENT } from '../services/plans';
 import { RedeemCode } from './RedeemCode';
+import { auth } from '../firebase';
 import { DEFAULT_PAYWALL_TEXT, PaywallText, trialSentence } from '../services/paywallText';
 
 interface AccessGateUser {
@@ -59,12 +60,12 @@ export const AccessGate: React.FC<AccessGateProps> = ({ user, onUnlock, onCancel
       // Persist the chosen name so we can apply it after the Stripe redirect return.
       sessionStorage.setItem('pending_stripe_name', nameAttempt);
 
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) throw new Error('Please sign in again.');
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
-          userId: user.id,
-          userEmail: user.email,
           userName: nameAttempt,
           plan: selectedPlan
         })
