@@ -15,6 +15,9 @@ import {
 } from '../services/gradeExpectations';
 import { shrinkImage } from '../services/imageUtils';
 import { useSiteText } from '../services/siteContent';
+import { clearDraft, loadDraft, saveDraft } from '../services/workSampleDraft';
+import { dbService } from '../services/dbService';
+import { newGeneration, progressPatch } from '../services/generationHistory';
 import { buildWorkSamplePdf, downloadBlob, openMailDraft, safeFileName, shareFile } from '../services/pdfExport';
 import {
   lpForDate,
@@ -230,42 +233,48 @@ export const WorkSampleFlow: React.FC<Props> = ({
   user, students, records, isPro, trialOver, onNeedPaywall, onSearchUsed, onAddStudent, onSaveRecord
 }) => {
   const siteText = useSiteText();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // Work in progress from earlier (a stray click on another tab, a refresh): loaded once, when this screen opens.
+  const draftRef = useRef(loadDraft(user.id));
+  const d = draftRef.current;
+  const [restored, setRestored] = useState(!!d);
+  // The History entry this work is saved under (created when the options appear).
+  const [generationId, setGenerationId] = useState<string | null>(d?.generationId ?? null);
+  const [step, setStep] = useState<1 | 2 | 3>(d?.step ?? 1);
 
   // Screen 1
-  const [studentId, setStudentId] = useState('');
-  const [grade, setGrade] = useState('');
-  const [subject, setSubject] = useState('');
-  const [query, setQuery] = useState('');
-  const [photo, setPhoto] = useState<string | null>(null);
-  const [onlyUnmet, setOnlyUnmet] = useState(false);
+  const [studentId, setStudentId] = useState(d?.studentId ?? '');
+  const [grade, setGrade] = useState(d?.grade ?? '');
+  const [subject, setSubject] = useState(d?.subject ?? '');
+  const [query, setQuery] = useState(d?.query ?? '');
+  const [photo, setPhoto] = useState<string | null>(d?.photo ?? null);
+  const [onlyUnmet, setOnlyUnmet] = useState(d?.onlyUnmet ?? false);
   const [formError, setFormError] = useState('');
   const [loading, setLoading] = useState(false);
   const [msgIndex, setMsgIndex] = useState(0);
 
   // Screen 2
-  const [options, setOptions] = useState<Option[]>([]);
-  const [activity, setActivity] = useState('');
+  const [options, setOptions] = useState<Option[]>(d?.options ?? []);
+  const [activity, setActivity] = useState(d?.activity ?? '');
   const [openStd, setOpenStd] = useState<number | null>(null);
   const [pageLoading, setPageLoading] = useState(false);
 
   // Screen 3
-  const [chosen, setChosen] = useState<Option | null>(null);
-  const [content, setContent] = useState<WorkPageContent | null>(null);
-  const [design, setDesign] = useState<PageDesign>('journal');
-  const [fields, setFields] = useState({ name: '', date: '', lp: '', subject: '', grade: '', standards: '', how: '' });
-  const [showLp, setShowLp] = useState(false);
-  const [writing, setWriting] = useState('');
-  const [boxes, setBoxes] = useState(['', '', '']);
-  const [extraPages, setExtraPages] = useState<string[]>([]);
-  const [drawing, setDrawing] = useState<string | null>(null);
+  const [chosen, setChosen] = useState<Option | null>(d?.chosen ?? null);
+  const [content, setContent] = useState<WorkPageContent | null>(d?.content ?? null);
+  const [design, setDesign] = useState<PageDesign>((d?.design as PageDesign) ?? 'journal');
+  const [fields, setFields] = useState(d?.fields ?? { name: '', date: '', lp: '', subject: '', grade: '', standards: '', how: '' });
+  const [showLp, setShowLp] = useState(d?.showLp ?? false);
+  const [writing, setWriting] = useState(d?.writing ?? '');
+  const [boxes, setBoxes] = useState(d?.boxes ?? ['', '', '']);
+  const [extraPages, setExtraPages] = useState<string[]>(d?.extraPages ?? []);
+  const [drawing, setDrawing] = useState<string | null>(d?.drawing ?? null);
   const [clearTick, setClearTick] = useState(0);
   const [tool, setTool] = useState<Tool>('none');
   const [color, setColor] = useState(PALETTE[0][1]);
   const [thick, setThick] = useState(false);
   // How big the child's typing looks (percent). Changes only the writing areas, not the printed page layout.
-  const [textScale, setTextScale] = useState(100);
-  const [saved, setSaved] = useState(false);
+  const [textScale, setTextScale] = useState(d?.textScale ?? 100);
+  const [saved, setSaved] = useState(d?.saved ?? false);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState<'' | 'download' | 'share'>('');
   const [exportMsg, setExportMsg] = useState('');
@@ -273,6 +282,38 @@ export const WorkSampleFlow: React.FC<Props> = ({
   const fileRef = useRef<HTMLInputElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const student = students.find(s => s.id === studentId);
+
+  // Save the work in progress as it changes (and once more if the screen is closed), so nothing is lost.
+  const latest = {
+    step, studentId, grade, subject, query, photo, onlyUnmet, options, activity, chosen, content, design,
+    fields, showLp, writing, boxes, extraPages, drawing, textScale, saved, generationId
+  };
+  const latestRef = useRef(latest);
+  latestRef.current = latest;
+  const draftOn = (step === 2 || step === 3) && options.length > 0;
+  useEffect(() => {
+    if (!draftOn) return;
+    const t = setTimeout(() => saveDraft(user.id, latestRef.current), 600);
+    return () => clearTimeout(t);
+  }, [draftOn, user.id, step, studentId, grade, subject, query, photo, options, activity, chosen, content, design,
+      fields, showLp, writing, boxes, extraPages, drawing, textScale, saved]);
+  useEffect(() => {
+    const flush = () => {
+      const l = latestRef.current;
+      if ((l.step === 2 || l.step === 3) && l.options.length > 0) saveDraft(user.id, l);
+    };
+    window.addEventListener('pagehide', flush);
+    return () => { window.removeEventListener('pagehide', flush); flush(); };
+  }, [user.id]);
+
+  // Keep the History entry up to date as the family works (words only; photos and drawings stay in this browser).
+  useEffect(() => {
+    if (!generationId || !draftOn) return;
+    const t = setTimeout(() => {
+      dbService.updateGeneration(generationId, progressPatch(latestRef.current)).catch(e => console.warn('History not updated:', e));
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [generationId, draftOn, studentId, chosen, content, design, fields, showLp, writing, boxes, extraPages, textScale]);
 
   useEffect(() => {
     if (!loading) return;
@@ -396,6 +437,12 @@ export const WorkSampleFlow: React.FC<Props> = ({
       setOpenStd(null);
       if (!isPro) await onSearchUsed();
       setStep(2);
+      setGenerationId(null);
+      if (list.length > 0) {
+        dbService.addGeneration(newGeneration(user.id, { grade, subject, activity: activityText, studentId, options: list }))
+          .then(id => setGenerationId(id))
+          .catch(e => console.warn('History not saved:', e));
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e: any) {
       console.error('Generate error:', e);
@@ -901,7 +948,7 @@ export const WorkSampleFlow: React.FC<Props> = ({
             ) : (
               <span className="self-center text-[11px] text-slate-400 font-bold">Choose a student on the first screen to save this to their Vault.</span>
             )}
-            <button type="button" onClick={() => { setStep(1); setQuery(''); setPhoto(null); setOptions([]); }} className="px-8 py-4 border-2 border-slate-200 text-slate-500 font-black rounded-2xl uppercase tracking-widest text-[11px] hover:border-[#81adb3] transition-all">Start a new work sample</button>
+            <button type="button" onClick={() => { clearDraft(user.id); setRestored(false); setGenerationId(null); setStep(1); setQuery(''); setPhoto(null); setOptions([]); }} className="px-8 py-4 border-2 border-slate-200 text-slate-500 font-black rounded-2xl uppercase tracking-widest text-[11px] hover:border-[#81adb3] transition-all">Start a new work sample</button>
           </div>
           {exportMsg && <p className="no-print text-center text-sm font-bold text-[#367c92] mt-4" role="status">{exportMsg}</p>}
           <p className="no-print text-center text-xs text-slate-400 mt-4"><span style={{ display: 'inline-block', width: 14, height: 14, borderRadius: 4, background: '#fddc96', verticalAlign: '-2px', marginRight: 6 }} />Gold highlight = filled in for you. Change anything before printing.</p>
